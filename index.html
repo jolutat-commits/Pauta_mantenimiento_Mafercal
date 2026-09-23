@@ -275,11 +275,10 @@
     <!-- VISTA FINAL DE REPORTES GENERADOS -->
     <div id="informe-view">
         
-        <!-- BOTONES DE DESCARGA DIRECTA Y NUBE -->
         <div id="informe-botones" class="no-print" style="display:flex; gap:10px; margin-bottom: 20px; flex-wrap: wrap; background: #e9f2fb; padding: 15px; border-radius: 8px;">
             <p style="width: 100%; margin: 0 0 10px 0; font-weight: bold; color: #0056b3;">✅ Documentos listos. Haz clic para descargar el archivo o enviarlo a la nube:</p>
             
-            <!-- NUEVO BOTÓN: SUBIR A GOOGLE DRIVE -->
+            <!-- BOTÓN ACTUALIZADO PARA SUBIR A DRIVE CORPORATIVO -->
             <button class="btn-exportar" onclick="subirADriveDirecto(window.informeActualPDFName || 'Informe_Mantenimiento.pdf')" style="margin-top:0; flex:1; min-width: 200px; background: #1a73e8; color: white;">☁️ Subir a Google Drive</button>
             
             <button class="btn-exportar" onclick="descargarPDFDirecto('informe-content-dinamico', window.informeActualPDFName || 'Informe_Completo.pdf')" style="margin-top:0; flex:1; min-width: 200px; background: #6c757d;">🖨️ Descargar Documento</button>
@@ -290,10 +289,8 @@
     </div>
 
 <script>
-    // Variable global para guardar el nombre del archivo PDF a usar
     window.informeActualPDFName = 'Informe.pdf';
 
-    // --- BASE DE DATOS EXACTA AL 100% ---
     const baseDeDatos = {
         "TRONZADORA DE METAL BOSCH GCO 14-24 J PROFESSIONAL": {
             "meta": { "tipo": "Tronzadora de metal", "codigo": "EQ-BOSCH-GCO1424J-01", "marca": "BOSCH", "modelo": "GCO 14-24 J Professional", "potencia": "2400 W", "serie": "BS-938201-2026", "tension": "230 V / 50-60 Hz", "diametro": "14\" (355 mm) / Eje 25.4 mm", "velocidad": "3800 RPM" },
@@ -463,13 +460,11 @@
     let registros = {};
     let maquinaActual = "";
     
-    // Variables de estado
     let estadoMaquinas = JSON.parse(localStorage.getItem('estado_talleres_maquinas') || '{}');
     let informeEditandoId = null;
     let informeParaRepararId = null;
     let informeParaRepuestosId = null;
 
-    // FIRMAS LÓGICA
     const canvases = {
         tecnico: { el: null, ctx: null, drawing: false },
         supervisor: { el: null, ctx: null, drawing: false }
@@ -718,7 +713,6 @@
         }
     }
 
-    // --- FUNCIÓN PARA DESCARGAR PDF DIRECTO AL PC (html2pdf) ---
     function descargarPDFDirecto(seccionId, nombreArchivo) {
         if (typeof html2pdf === 'undefined') {
             alert("No se pudo cargar el motor de PDF (se requiere internet para la descarga directa).");
@@ -727,7 +721,6 @@
 
         const btnBox = document.getElementById('informe-botones');
         const separador = document.getElementById('separador-informes');
-        
         if(btnBox) btnBox.style.display = 'none';
         if(separador) separador.style.display = 'none';
 
@@ -764,7 +757,6 @@
         });
     }
 
-    // --- NUEVO: FUNCIÓN PARA SUBIR PDF A GOOGLE DRIVE DIRECTAMENTE ---
     function subirADriveDirecto(nombreArchivo) {
         if (typeof html2pdf === 'undefined') {
             alert("La conexión a la nube requiere internet.");
@@ -790,46 +782,40 @@
             pagebreak:    { mode: ['css', 'legacy'] }
         };
 
-        // Mostrar pantalla de carga visual
         let loadingMsg = document.createElement('div');
         loadingMsg.id = 'loading-drive';
         loadingMsg.style = 'position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(0,0,0,0.9); color:white; padding:25px; border-radius:12px; z-index:9999; font-size:1.2em; font-weight:bold; text-align:center; box-shadow: 0 4px 15px rgba(0,0,0,0.4); border: 2px solid #1a73e8;';
         loadingMsg.innerHTML = '⏳ Generando PDF y enviando a Google Drive...<br><span style="font-size:0.7em; color:#ccc; font-weight:normal; display:block; margin-top:10px;">Por favor, no cierres la ventana.</span>';
         document.body.appendChild(loadingMsg);
 
-        // Generar PDF y mandarlo por fetch
         html2pdf().set(opt).from(elementoBase).outputPdf('datauristring').then(function(pdfBase64) {
-            
-            // Restaurar botones visuales
             if(btnBox) btnBox.style.display = 'flex';
             if(separador) separador.style.display = 'block';
 
-            // Quitar el encabezado del base64
             let base64Data = pdfBase64.split(',')[1];
-
-            // AQUÍ ESTÁ TU PUENTE SECRETO
-            const scriptURL = "https://script.google.com/macros/s/AKfycbwtZM_6QxeDf1uo-thEknkifTQ_RUDUTglvtRxumdQqyH4gKsEc-Q1bY15OshrUTbQvSg/exec";
+            
+            // AQUÍ ESTÁ TU NUEVO PUENTE DE MAFERCAL
+            const scriptURL = "https://script.google.com/a/macros/mafercal.cl/s/AKfycbyPjLN8gBME74sYAbZhft_HXGfOCgbamLrIlybJcuUNFWo8IhjEOhWXFvNZqZbsl6AG/exec";
             
             fetch(scriptURL, {
                 method: 'POST',
+                mode: 'no-cors',
+                headers: {
+                    'Content-Type': 'text/plain'
+                },
                 body: JSON.stringify({
                     fileName: nombreArchivo,
                     mimeType: 'application/pdf',
                     fileData: base64Data
                 })
             })
-            .then(response => response.json())
-            .then(result => {
+            .then(() => {
                 document.body.removeChild(loadingMsg);
-                if (result.status === 'success') {
-                    alert('✅ ¡PDF subido exitosamente a la carpeta Informes Mantenimiento en Google Drive!');
-                } else {
-                    alert('❌ Hubo un error al subir a Drive: ' + result.error);
-                }
+                alert('✅ ¡Documento enviado exitosamente a Google Drive corporativo!');
             })
             .catch(error => {
                 document.body.removeChild(loadingMsg);
-                alert('❌ Falló la conexión con Google Drive. Verifica tu internet.');
+                alert('❌ Falló la conexión de red. Verifica que tengas señal de internet.');
                 console.error('Error de subida:', error);
             });
         }).catch(err => {
@@ -838,6 +824,27 @@
             if(separador) separador.style.display = 'block';
             alert('❌ Error al generar el PDF internamente: ' + err.message);
         });
+    }
+
+    function imprimirSeccion(seccionId) {
+        const contentDinamico = document.getElementById('informe-content-dinamico');
+        const infEjecutivo = contentDinamico.querySelector('#informe-ejecutivo');
+        const anexoCheck = contentDinamico.querySelector('#anexo-checklist');
+        const separador = contentDinamico.querySelector('#separador-informes');
+        
+        if(seccionId === 'informe-ejecutivo') {
+            if(anexoCheck) anexoCheck.style.display = 'none';
+            if(separador) separador.style.display = 'none';
+        } else {
+            if(infEjecutivo) infEjecutivo.style.display = 'none';
+            if(separador) separador.style.display = 'none';
+        }
+        
+        window.print();
+        
+        if(infEjecutivo) infEjecutivo.style.display = 'block';
+        if(anexoCheck) anexoCheck.style.display = 'block';
+        if(separador) separador.style.display = 'block';
     }
 
     function generarYGuardarInforme() {
@@ -948,7 +955,6 @@
     }
 
     function renderizarPDF(informe) {
-        // Configuramos el nombre global del PDF usando el código de la máquina y la fecha
         let dateStr = new Date(informe.fecha).toISOString().split('T')[0];
         window.informeActualPDFName = `Informe_${informe.meta.codigo}_${dateStr}.pdf`;
 
