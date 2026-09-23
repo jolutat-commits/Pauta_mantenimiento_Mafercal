@@ -278,9 +278,7 @@
         <div id="informe-botones" class="no-print" style="display:flex; gap:10px; margin-bottom: 20px; flex-wrap: wrap; background: #e9f2fb; padding: 15px; border-radius: 8px;">
             <p style="width: 100%; margin: 0 0 10px 0; font-weight: bold; color: #0056b3;">✅ Documentos listos. Haz clic para descargar el archivo o enviarlo a la nube:</p>
             
-            <!-- BOTÓN ACTUALIZADO PARA SUBIR A DRIVE CORPORATIVO -->
             <button class="btn-exportar" onclick="subirADriveDirecto(window.informeActualPDFName || 'Informe_Mantenimiento.pdf')" style="margin-top:0; flex:1; min-width: 200px; background: #1a73e8; color: white;">☁️ Subir a Google Drive</button>
-            
             <button class="btn-exportar" onclick="descargarPDFDirecto('informe-content-dinamico', window.informeActualPDFName || 'Informe_Completo.pdf')" style="margin-top:0; flex:1; min-width: 200px; background: #6c757d;">🖨️ Descargar Documento</button>
             <button class="btn-exportar" style="background: #333; margin-top:0; flex:1; min-width: 200px;" onclick="location.reload()">🔄 Volver al Sistema</button>
         </div>
@@ -713,6 +711,7 @@
         }
     }
 
+    // --- FUNCIÓN PARA DESCARGAR PDF LOCAL ---
     function descargarPDFDirecto(seccionId, nombreArchivo) {
         if (typeof html2pdf === 'undefined') {
             alert("No se pudo cargar el motor de PDF (se requiere internet para la descarga directa).");
@@ -724,19 +723,16 @@
         if(btnBox) btnBox.style.display = 'none';
         if(separador) separador.style.display = 'none';
 
-        const infEjecutivo = document.getElementById('informe-ejecutivo');
-        const anexoCheck = document.getElementById('anexo-checklist');
-        
-        let originalDisplayInf = infEjecutivo ? infEjecutivo.style.display : '';
-        let originalDisplayAnex = anexoCheck ? anexoCheck.style.display : '';
-
-        if(seccionId === 'informe-ejecutivo') {
-            if(anexoCheck) anexoCheck.style.display = 'none';
-        } else if (seccionId === 'anexo-checklist') {
-            if(infEjecutivo) infEjecutivo.style.display = 'none';
-        }
-
         const elementoBase = document.getElementById('informe-content-dinamico');
+        
+        // --- TRUCO MAGICO: FORMATO ESCRITORIO ---
+        const originalStyle = elementoBase.style.cssText;
+        elementoBase.style.width = '850px';
+        elementoBase.style.maxWidth = 'none';
+        elementoBase.style.margin = '0 auto';
+        elementoBase.style.padding = '20px';
+        elementoBase.style.backgroundColor = '#ffffff';
+
         const saltoCSS = document.querySelector('.salto-pagina');
         if(saltoCSS) saltoCSS.style.pageBreakBefore = 'always';
 
@@ -744,19 +740,20 @@
             margin:       10,
             filename:     nombreArchivo,
             image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2, useCORS: true },
+            html2canvas:  { scale: 2, useCORS: true, windowWidth: 850 },
             jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
-            pagebreak:    { mode: ['css', 'legacy'] }
+            pagebreak:    { mode: ['css', 'avoid-all'], before: '.salto-pagina' }
         };
 
         html2pdf().set(opt).from(elementoBase).save().then(() => {
+            // Restaurar a vista celular
+            elementoBase.style.cssText = originalStyle;
             if(btnBox) btnBox.style.display = 'flex';
             if(separador) separador.style.display = 'block';
-            if(infEjecutivo) infEjecutivo.style.display = originalDisplayInf;
-            if(anexoCheck) anexoCheck.style.display = originalDisplayAnex;
         });
     }
 
+    // --- FUNCIÓN PARA SUBIR A DRIVE ---
     function subirADriveDirecto(nombreArchivo) {
         if (typeof html2pdf === 'undefined') {
             alert("La conexión a la nube requiere internet.");
@@ -770,6 +767,15 @@
         if(separador) separador.style.display = 'none';
 
         const elementoBase = document.getElementById('informe-content-dinamico');
+        
+        // --- TRUCO MAGICO: FORMATO ESCRITORIO ---
+        const originalStyle = elementoBase.style.cssText;
+        elementoBase.style.width = '850px';
+        elementoBase.style.maxWidth = 'none';
+        elementoBase.style.margin = '0 auto';
+        elementoBase.style.padding = '20px';
+        elementoBase.style.backgroundColor = '#ffffff';
+
         const saltoCSS = document.querySelector('.salto-pagina');
         if(saltoCSS) saltoCSS.style.pageBreakBefore = 'always';
 
@@ -777,9 +783,9 @@
             margin:       10,
             filename:     nombreArchivo,
             image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2, useCORS: true },
+            html2canvas:  { scale: 2, useCORS: true, windowWidth: 850 },
             jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
-            pagebreak:    { mode: ['css', 'legacy'] }
+            pagebreak:    { mode: ['css', 'avoid-all'], before: '.salto-pagina' }
         };
 
         let loadingMsg = document.createElement('div');
@@ -789,12 +795,14 @@
         document.body.appendChild(loadingMsg);
 
         html2pdf().set(opt).from(elementoBase).outputPdf('datauristring').then(function(pdfBase64) {
+            
+            // Restaurar a vista celular
+            elementoBase.style.cssText = originalStyle;
             if(btnBox) btnBox.style.display = 'flex';
             if(separador) separador.style.display = 'block';
 
             let base64Data = pdfBase64.split(',')[1];
             
-            // AQUÍ ESTÁ TU NUEVO PUENTE DE MAFERCAL
             const scriptURL = "https://script.google.com/a/macros/mafercal.cl/s/AKfycbyPjLN8gBME74sYAbZhft_HXGfOCgbamLrIlybJcuUNFWo8IhjEOhWXFvNZqZbsl6AG/exec";
             
             fetch(scriptURL, {
@@ -820,31 +828,13 @@
             });
         }).catch(err => {
             document.body.removeChild(loadingMsg);
+            
+            elementoBase.style.cssText = originalStyle;
             if(btnBox) btnBox.style.display = 'flex';
             if(separador) separador.style.display = 'block';
+            
             alert('❌ Error al generar el PDF internamente: ' + err.message);
         });
-    }
-
-    function imprimirSeccion(seccionId) {
-        const contentDinamico = document.getElementById('informe-content-dinamico');
-        const infEjecutivo = contentDinamico.querySelector('#informe-ejecutivo');
-        const anexoCheck = contentDinamico.querySelector('#anexo-checklist');
-        const separador = contentDinamico.querySelector('#separador-informes');
-        
-        if(seccionId === 'informe-ejecutivo') {
-            if(anexoCheck) anexoCheck.style.display = 'none';
-            if(separador) separador.style.display = 'none';
-        } else {
-            if(infEjecutivo) infEjecutivo.style.display = 'none';
-            if(separador) separador.style.display = 'none';
-        }
-        
-        window.print();
-        
-        if(infEjecutivo) infEjecutivo.style.display = 'block';
-        if(anexoCheck) anexoCheck.style.display = 'block';
-        if(separador) separador.style.display = 'block';
     }
 
     function generarYGuardarInforme() {
