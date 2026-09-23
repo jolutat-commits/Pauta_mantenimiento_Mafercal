@@ -259,6 +259,7 @@
                 <strong>2.</strong> Luego presiona "📧 Por Gmail" y adjunta el archivo guardado al correo.
             </div>
 
+            <!-- BOTÓN QUE LLAMA A LA FUNCIÓN DE DESCARGA DIRECTA -->
             <button onclick="descargarPDFDesdeModal()" style="width:100%; padding:10px; background:#6c757d; color:white; border:none; border-radius:4px; font-weight:bold; margin-bottom:15px; cursor:pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">📥 1. Descargar Documento Completo PDF</button>
             
             <p style="font-size:0.9em; color:#555; margin-top: 0; margin-bottom: 5px; font-weight: bold;">Texto automático generado para Compras:</p>
@@ -275,11 +276,12 @@
     <!-- VISTA FINAL DE REPORTES GENERADOS -->
     <div id="informe-view">
         
+        <!-- BOTONES DE DESCARGA DIRECTA -->
         <div id="informe-botones" class="no-print" style="display:flex; gap:10px; margin-bottom: 20px; flex-wrap: wrap; background: #e9f2fb; padding: 15px; border-radius: 8px;">
-            <p style="width: 100%; margin: 0 0 10px 0; font-weight: bold; color: #0056b3;">✅ Documentos listos. Haz clic para descargar el archivo o enviarlo a la nube:</p>
-            
-            <button class="btn-exportar" onclick="subirADriveDirecto(window.informeActualPDFName || 'Informe_Mantenimiento.pdf')" style="margin-top:0; flex:1; min-width: 200px; background: #1a73e8; color: white;">☁️ Subir a Google Drive</button>
-            <button class="btn-exportar" onclick="descargarPDFDirecto('informe-content-dinamico', window.informeActualPDFName || 'Informe_Completo.pdf')" style="margin-top:0; flex:1; min-width: 200px; background: #6c757d;">🖨️ Descargar Documento</button>
+            <p style="width: 100%; margin: 0 0 10px 0; font-weight: bold; color: #0056b3;">✅ Documentos listos. Haz clic para descargar el archivo PDF directo:</p>
+            <button class="btn-exportar" onclick="descargarPDFDirecto('informe-content-dinamico', 'Informe_Completo.pdf')" style="margin-top:0; flex:1; min-width: 200px; background: #6c757d;">🖨️ Descargar Documento Completo</button>
+            <button class="btn-exportar" onclick="descargarPDFDirecto('informe-ejecutivo', 'Informe_Ejecutivo.pdf')" style="margin-top:0; flex:1; min-width: 200px; background: #0056b3;">🖨️ Descargar Solo Informe</button>
+            <button class="btn-exportar" onclick="descargarPDFDirecto('anexo-checklist', 'Checklist_Pauta.pdf')" style="margin-top:0; flex:1; min-width: 200px; background: #28a745;">🖨️ Descargar Solo Pauta</button>
             <button class="btn-exportar" style="background: #333; margin-top:0; flex:1; min-width: 200px;" onclick="location.reload()">🔄 Volver al Sistema</button>
         </div>
 
@@ -287,8 +289,7 @@
     </div>
 
 <script>
-    window.informeActualPDFName = 'Informe.pdf';
-
+    // --- BASE DE DATOS EXACTA AL 100% ---
     const baseDeDatos = {
         "TRONZADORA DE METAL BOSCH GCO 14-24 J PROFESSIONAL": {
             "meta": { "tipo": "Tronzadora de metal", "codigo": "EQ-BOSCH-GCO1424J-01", "marca": "BOSCH", "modelo": "GCO 14-24 J Professional", "potencia": "2400 W", "serie": "BS-938201-2026", "tension": "230 V / 50-60 Hz", "diametro": "14\" (355 mm) / Eje 25.4 mm", "velocidad": "3800 RPM" },
@@ -458,11 +459,13 @@
     let registros = {};
     let maquinaActual = "";
     
+    // Variables de estado
     let estadoMaquinas = JSON.parse(localStorage.getItem('estado_talleres_maquinas') || '{}');
     let informeEditandoId = null;
     let informeParaRepararId = null;
     let informeParaRepuestosId = null;
 
+    // FIRMAS LÓGICA
     const canvases = {
         tecnico: { el: null, ctx: null, drawing: false },
         supervisor: { el: null, ctx: null, drawing: false }
@@ -711,28 +714,35 @@
         }
     }
 
-    // --- FUNCIÓN PARA DESCARGAR PDF LOCAL ---
+    // --- NUEVO: FUNCIÓN PARA DESCARGAR PDF DIRECTO (html2pdf) ---
     function descargarPDFDirecto(seccionId, nombreArchivo) {
         if (typeof html2pdf === 'undefined') {
-            alert("No se pudo cargar el motor de PDF (se requiere internet para la descarga directa).");
+            alert("No se pudo cargar el motor de PDF (se requiere internet para la descarga directa). Se abrirá la impresión estándar.");
+            imprimirSeccion(seccionId);
             return;
         }
 
         const btnBox = document.getElementById('informe-botones');
         const separador = document.getElementById('separador-informes');
+        
         if(btnBox) btnBox.style.display = 'none';
         if(separador) separador.style.display = 'none';
 
+        const infEjecutivo = document.getElementById('informe-ejecutivo');
+        const anexoCheck = document.getElementById('anexo-checklist');
+        
+        let originalDisplayInf = infEjecutivo ? infEjecutivo.style.display : '';
+        let originalDisplayAnex = anexoCheck ? anexoCheck.style.display : '';
+
+        if(seccionId === 'informe-ejecutivo') {
+            if(anexoCheck) anexoCheck.style.display = 'none';
+        } else if (seccionId === 'anexo-checklist') {
+            if(infEjecutivo) infEjecutivo.style.display = 'none';
+        }
+
         const elementoBase = document.getElementById('informe-content-dinamico');
         
-        // --- TRUCO MAGICO: FORMATO ESCRITORIO ---
-        const originalStyle = elementoBase.style.cssText;
-        elementoBase.style.width = '850px';
-        elementoBase.style.maxWidth = 'none';
-        elementoBase.style.margin = '0 auto';
-        elementoBase.style.padding = '20px';
-        elementoBase.style.backgroundColor = '#ffffff';
-
+        // El salto de página dinámico para la librería
         const saltoCSS = document.querySelector('.salto-pagina');
         if(saltoCSS) saltoCSS.style.pageBreakBefore = 'always';
 
@@ -740,101 +750,38 @@
             margin:       10,
             filename:     nombreArchivo,
             image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2, useCORS: true, windowWidth: 850 },
+            html2canvas:  { scale: 2, useCORS: true },
             jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
-            pagebreak:    { mode: ['css', 'avoid-all'], before: '.salto-pagina' }
+            pagebreak:    { mode: ['css', 'legacy'] }
         };
 
         html2pdf().set(opt).from(elementoBase).save().then(() => {
-            // Restaurar a vista celular
-            elementoBase.style.cssText = originalStyle;
             if(btnBox) btnBox.style.display = 'flex';
             if(separador) separador.style.display = 'block';
+            if(infEjecutivo) infEjecutivo.style.display = originalDisplayInf;
+            if(anexoCheck) anexoCheck.style.display = originalDisplayAnex;
         });
     }
 
-    // --- FUNCIÓN PARA SUBIR A DRIVE ---
-    function subirADriveDirecto(nombreArchivo) {
-        if (typeof html2pdf === 'undefined') {
-            alert("La conexión a la nube requiere internet.");
-            return;
+    function imprimirSeccion(seccionId) {
+        const contentDinamico = document.getElementById('informe-content-dinamico');
+        const infEjecutivo = contentDinamico.querySelector('#informe-ejecutivo');
+        const anexoCheck = contentDinamico.querySelector('#anexo-checklist');
+        const separador = contentDinamico.querySelector('#separador-informes');
+        
+        if(seccionId === 'informe-ejecutivo') {
+            if(anexoCheck) anexoCheck.style.display = 'none';
+            if(separador) separador.style.display = 'none';
+        } else {
+            if(infEjecutivo) infEjecutivo.style.display = 'none';
+            if(separador) separador.style.display = 'none';
         }
-
-        const btnBox = document.getElementById('informe-botones');
-        const separador = document.getElementById('separador-informes');
         
-        if(btnBox) btnBox.style.display = 'none';
-        if(separador) separador.style.display = 'none';
-
-        const elementoBase = document.getElementById('informe-content-dinamico');
+        window.print();
         
-        // --- TRUCO MAGICO: FORMATO ESCRITORIO ---
-        const originalStyle = elementoBase.style.cssText;
-        elementoBase.style.width = '850px';
-        elementoBase.style.maxWidth = 'none';
-        elementoBase.style.margin = '0 auto';
-        elementoBase.style.padding = '20px';
-        elementoBase.style.backgroundColor = '#ffffff';
-
-        const saltoCSS = document.querySelector('.salto-pagina');
-        if(saltoCSS) saltoCSS.style.pageBreakBefore = 'always';
-
-        var opt = {
-            margin:       10,
-            filename:     nombreArchivo,
-            image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2, useCORS: true, windowWidth: 850 },
-            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
-            pagebreak:    { mode: ['css', 'avoid-all'], before: '.salto-pagina' }
-        };
-
-        let loadingMsg = document.createElement('div');
-        loadingMsg.id = 'loading-drive';
-        loadingMsg.style = 'position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(0,0,0,0.9); color:white; padding:25px; border-radius:12px; z-index:9999; font-size:1.2em; font-weight:bold; text-align:center; box-shadow: 0 4px 15px rgba(0,0,0,0.4); border: 2px solid #1a73e8;';
-        loadingMsg.innerHTML = '⏳ Generando PDF y enviando a Google Drive...<br><span style="font-size:0.7em; color:#ccc; font-weight:normal; display:block; margin-top:10px;">Por favor, no cierres la ventana.</span>';
-        document.body.appendChild(loadingMsg);
-
-        html2pdf().set(opt).from(elementoBase).outputPdf('datauristring').then(function(pdfBase64) {
-            
-            // Restaurar a vista celular
-            elementoBase.style.cssText = originalStyle;
-            if(btnBox) btnBox.style.display = 'flex';
-            if(separador) separador.style.display = 'block';
-
-            let base64Data = pdfBase64.split(',')[1];
-            
-            const scriptURL = "https://script.google.com/a/macros/mafercal.cl/s/AKfycbyPjLN8gBME74sYAbZhft_HXGfOCgbamLrIlybJcuUNFWo8IhjEOhWXFvNZqZbsl6AG/exec";
-            
-            fetch(scriptURL, {
-                method: 'POST',
-                mode: 'no-cors',
-                headers: {
-                    'Content-Type': 'text/plain'
-                },
-                body: JSON.stringify({
-                    fileName: nombreArchivo,
-                    mimeType: 'application/pdf',
-                    fileData: base64Data
-                })
-            })
-            .then(() => {
-                document.body.removeChild(loadingMsg);
-                alert('✅ ¡Documento enviado exitosamente a Google Drive corporativo!');
-            })
-            .catch(error => {
-                document.body.removeChild(loadingMsg);
-                alert('❌ Falló la conexión de red. Verifica que tengas señal de internet.');
-                console.error('Error de subida:', error);
-            });
-        }).catch(err => {
-            document.body.removeChild(loadingMsg);
-            
-            elementoBase.style.cssText = originalStyle;
-            if(btnBox) btnBox.style.display = 'flex';
-            if(separador) separador.style.display = 'block';
-            
-            alert('❌ Error al generar el PDF internamente: ' + err.message);
-        });
+        if(infEjecutivo) infEjecutivo.style.display = 'block';
+        if(anexoCheck) anexoCheck.style.display = 'block';
+        if(separador) separador.style.display = 'block';
     }
 
     function generarYGuardarInforme() {
@@ -945,9 +892,6 @@
     }
 
     function renderizarPDF(informe) {
-        let dateStr = new Date(informe.fecha).toISOString().split('T')[0];
-        window.informeActualPDFName = `Informe_${informe.meta.codigo}_${dateStr}.pdf`;
-
         const contentDiv = document.getElementById('informe-content-dinamico');
         
         const f = new Date(informe.fecha);
@@ -1093,7 +1037,7 @@
                 </table>
 
                 <div class="seccion-titulo">Objetivo</div>
-                <p class="doc-text">El presente informe técnico tiene como finalidad diagnosticar y documentar el estado operativo real de la máquina para facilitar la toma de decisiones informadas sobre su mantenimiento y continuidad operativa.</p>
+                <p class="doc-text">El presente informe técnico tiene como finalidad diagnosticar y documentar el estado operativo real de la máquina para facilitar la toma de decisiones informadas sobre su mantenimiento y continuity operativa.</p>
 
                 <div class="seccion-titulo">Alcance de la Inspección</div>
                 <ul class="doc-list">
@@ -1238,7 +1182,7 @@
                     ${botonReparar}
                     ${botonRepuestos}
                     ${divBotonesEdicion}
-                    <button class="btn-ver" style="margin-top:0;" onclick="verReporteAntiguo(${informe.id})">📄 Abrir Informe</button>
+                    <button class="btn-ver" style="margin-top:0;" onclick="verReporteAntiguo(${informe.id})">📄 Ver PDF</button>
                 </div>
             `;
             contenedor.appendChild(div);
