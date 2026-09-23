@@ -1,1 +1,1398 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>App de Inspección Técnica Integral</title>
+    
+    <!-- CONEXIÓN PWA (MODO APP) -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0056b3">
+    
+    <!-- LIBRERÍA PROFESIONAL PARA DESCARGA DIRECTA DE PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
+    <style>
+        :root {
+            --bg-color: #f4f7f6;
+            --primary: #0056b3;
+            --success: #28a745;
+            --warning: #ffc107;
+            --danger: #dc3545;
+            --text-dark: #333;
+        }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg-color); color: var(--text-dark); margin: 0; padding: 10px; padding-bottom: 90px; }
+        
+        /* APP UI */
+        .header { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 15px; text-align: center; }
+        h2 { margin: 0 0 10px 0; color: #2c3e50; font-size: 1.3em; }
+        .input-group { margin-bottom: 10px; text-align: left; }
+        .input-group label { display: block; font-weight: bold; margin-bottom: 5px; color: #555; font-size: 0.9em; }
+        select, .form-control { width: 100%; padding: 10px; font-size: 1em; border-radius: 6px; border: 1px solid #ccc; box-sizing: border-box; background: #fff; font-family: inherit; }
+        
+        .tabs { display: flex; border-bottom: 3px solid var(--primary); margin-bottom: 15px; background: white; border-radius: 8px 8px 0 0; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.05); flex-wrap: wrap; }
+        .tab-btn { flex: 1 1 20%; min-width: 80px; padding: 10px 2px; cursor: pointer; text-align: center; font-weight: bold; background: #e9ecef; border: none; font-size: 0.8em; color: #555; transition: 0.3s; }
+        .tab-btn.active { background: var(--primary); color: white; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        
+        .card { background: white; border-radius: 8px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border-left: 4px solid var(--primary); }
+        
+        .tabla-tecnica { width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 0.85em; background: white; border: 1px solid #ccc; }
+        .tabla-tecnica td { border: 1px solid #ccc; padding: 6px; }
+        .tabla-tecnica td strong { color: var(--primary); }
+        .td-bg { background-color: #e9f2fb; }
+        
+        .card-title { font-weight: bold; font-size: 1.05em; margin-bottom: 5px; color: var(--primary); }
+        .card-desc { font-size: 0.9em; color: #555; margin-bottom: 4px; }
+        .card-frec { font-size: 0.8em; color: #888; margin-bottom: 12px; font-style: italic; }
+        
+        .btn-group { display: flex; gap: 8px; }
+        .btn-estado { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-weight: bold; font-size: 0.9em; cursor: pointer; background: #f8f9fa; color: #495057; }
+        .btn-estado.selected[data-val="Bueno"] { background: var(--success); color: white; border-color: var(--success); }
+        .btn-estado.selected[data-val="Regular"] { background: var(--warning); color: #212529; border-color: var(--warning); }
+        .btn-estado.selected[data-val="Malo"] { background: var(--danger); color: white; border-color: var(--danger); }
+        
+        .hallazgo-container { display: none; margin-top: 15px; background: #fff8f8; padding: 10px; border-radius: 6px; border-left: 3px solid var(--danger); }
+        .hallazgo-container.regular { background: #fffdf5; border-left-color: var(--warning); }
+        
+        .instruccion-item { background: white; padding: 12px; margin-bottom: 8px; border-radius: 6px; font-size: 0.9em; line-height: 1.4; border-left: 3px solid #6c757d; }
+        .instruccion-titulo { font-weight: bold; color: var(--primary); margin-bottom: 5px; font-size: 1em; border: none; background: #e9ecef; padding: 8px; }
+
+        .alert-box { padding: 15px; border-radius: 6px; margin-bottom: 15px; font-weight: bold; display: none; }
+        .alert-danger { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; display: block; }
+        .alert-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; display: block; }
+        
+        .historial-item { background: white; padding: 12px; border-radius: 6px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; border-left: 4px solid #ccc; }
+        .btn-ver { background: #17a2b8; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-top: 5px; width: 100%;}
+        .btn-reparar { background: #ffc107; color: #212529; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-bottom: 5px; width: 100%;}
+        .btn-repuestos { background: #0dcaf0; color: #000; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-bottom: 5px; width: 100%;}
+
+        .btn-finalizar { position: fixed; bottom: 15px; left: 50%; transform: translateX(-50%); width: 92%; max-width: 400px; background: var(--primary); color: white; padding: 15px; border: none; border-radius: 30px; font-size: 1.1em; font-weight: bold; box-shadow: 0 4px 10px rgba(0,86,179,0.4); cursor: pointer; z-index: 1000; }
+        
+        /* --- ESTILOS MODALES --- */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 2000; align-items: center; justify-content: center; padding: 10px; box-sizing: border-box;}
+        .modal-content { background: white; padding: 20px; border-radius: 8px; width: 100%; max-width: 500px; max-height: 85vh; overflow-y: auto; }
+        .rep-item { background: #f8f9fa; padding: 10px; border-radius: 6px; border-left: 3px solid #ffc107; margin-bottom: 10px; }
+        .rep-item.critico { border-left-color: #dc3545; background: #fff8f8; }
+
+        /* --- ESTILOS DEL INFORME TÉCNICO FORMAL --- */
+        #informe-view { display: none; background: white; padding: 20px; font-family: 'Arial', sans-serif; color: #000; line-height: 1.4; }
+        .doc-title { text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; font-size: 1.6em; text-transform: uppercase; font-weight: bold; }
+        .seccion-titulo { font-size: 1.1em; font-weight: bold; background-color: #f2f2f2; padding: 5px; border-top: 1px solid #000; border-bottom: 1px solid #000; margin-top: 20px; margin-bottom: 10px; text-transform: uppercase; }
+        
+        .doc-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 0.9em; page-break-inside: auto; }
+        .doc-table td, .doc-table th { border: 1px solid #000; padding: 6px 10px; vertical-align: top; }
+        .doc-table th { background-color: #f2f2f2; text-align: left; }
+        .col-header { width: 35%; font-weight: bold; background-color: #fafafa; }
+
+        .doc-text { font-size: 0.95em; margin-bottom: 15px; text-align: justify; }
+        .doc-list { font-size: 0.95em; margin-top: 0; margin-bottom: 15px; padding-left: 20px; }
+        .doc-list li { margin-bottom: 4px; }
+        
+        .firmas-grid { display: flex; justify-content: space-between; margin-top: 60px; page-break-inside: avoid; align-items: flex-end;}
+        .firma-col { width: 45%; text-align: center; font-size: 0.9em; }
+        .firma-linea { border-top: 1px solid #000; padding-top: 5px; margin-bottom: 30px; font-weight: bold; }
+        .firma-img { max-height: 80px; max-width: 100%; margin-bottom: 5px; }
+        
+        .btn-exportar { display: block; width: 100%; padding: 15px; background: #333; color: white; border: none; border-radius: 6px; font-size: 1.1em; margin-top: 20px; cursor: pointer; }
+        
+        .salto-pagina { page-break-before: always; clear: both; }
+
+        @media print {
+            body { background: white; padding: 0; }
+            .btn-exportar, .btn-finalizar, #app-view { display: none !important; }
+            #informe-view { display: block !important; padding: 0; }
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app-view">
+        <div class="header">
+            <h2>📱 Sistema de Gestión de Mantenimiento</h2>
+        </div>
+
+        <div class="tabs">
+            <button class="tab-btn active" onclick="cambiarPestana('inspeccion')" id="btn-inspeccion">📝 Inspección</button>
+            <button class="tab-btn" onclick="cambiarPestana('horometro')" id="btn-horometro">⏱️ Horómetro</button>
+            <button class="tab-btn" onclick="cambiarPestana('historial')" id="btn-historial">📂 Historial</button>
+            <button class="tab-btn" onclick="cambiarPestana('instrucciones')" id="btn-instrucciones">📖 Instrucciones</button>
+        </div>
+        
+        <div class="input-group" id="selector-container">
+            <label>Seleccionar Equipo Activo:</label>
+            <select id="selector-maquina" onchange="cargarDatosMaquina()"></select>
+        </div>
+
+        <!-- Pestaña 1: INSPECCIÓN -->
+        <div id="tab-inspeccion" class="tab-content active">
+            <div id="alerta-inspeccion" class="alert-box alert-success">
+                ✅ Máquina operativa. No requiere mantenimiento urgente.
+            </div>
+
+            <div id="info-tecnica-equipo"></div>
+
+            <div class="card" style="border-left-color: #17a2b8; margin-top: 15px;">
+                <h3 style="margin-top:0; color:#17a2b8; font-size: 1.1em;">Datos de Control y Ejecución</h3>
+                <div class="input-group">
+                    <label>Fecha de revisión:</label>
+                    <input type="date" id="ctrl-fecha" class="form-control">
+                </div>
+                <div class="input-group">
+                    <label>Técnico responsable:</label>
+                    <input type="text" id="ctrl-tecnico" class="form-control" placeholder="Ej: Arturo Saavedra" oninput="actualizarNombresFirmas()">
+                </div>
+                <div class="input-group">
+                    <label>Supervisor responsable:</label>
+                    <input type="text" id="ctrl-supervisor" class="form-control" placeholder="Ej: Eduardo Núñez" oninput="actualizarNombresFirmas()">
+                </div>
+                <div class="input-group">
+                    <label>Número de serie del equipo:</label>
+                    <input type="text" id="ctrl-serie" class="form-control">
+                </div>
+                <div class="input-group">
+                    <label>Ubicación / Área:</label>
+                    <input type="text" id="ctrl-ubicacion" class="form-control" placeholder="Ej: Taller Mecánico">
+                </div>
+                <div class="input-group">
+                    <label>Horas de uso del equipo (Editable):</label>
+                    <input type="number" id="ctrl-horas-edit" class="form-control" step="0.5" placeholder="Ej: 40">
+                </div>
+            </div>
+
+            <h3 style="color:#0056b3; margin-top:20px;">Pauta de Revisión</h3>
+            <div id="lista-tareas"></div>
+
+            <!-- FIRMAS DIGITALES -->
+            <div class="card" style="border-left-color: #28a745; padding-bottom: 30px;">
+                <h3 style="margin-top:0; color:#28a745; font-size: 1.1em;">✍️ Firmas Digitales</h3>
+                <div style="display: flex; flex-wrap: wrap; gap: 15px; justify-content: center;">
+                    <div style="flex: 1; min-width: 280px; text-align: center;">
+                        <label id="lbl-firma-tecnico" style="font-weight:bold; color:#555; display:block; margin-bottom:5px;">Firma Técnico Responsable</label>
+                        <canvas id="canvas-tecnico" width="300" height="150" style="border:1px solid #ccc; border-radius:6px; background:#fafafa; touch-action: none; width: 100%; max-width: 300px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);"></canvas>
+                        <br><button onclick="limpiarFirma('tecnico')" style="margin-top:5px; padding:8px 15px; border:none; background:#dc3545; color:white; border-radius:4px; cursor:pointer; font-size:0.85em; font-weight:bold;">🗑️ Borrar Firma</button>
+                    </div>
+                    <div style="flex: 1; min-width: 280px; text-align: center;">
+                        <label id="lbl-firma-supervisor" style="font-weight:bold; color:#555; display:block; margin-bottom:5px;">Firma Supervisor</label>
+                        <canvas id="canvas-supervisor" width="300" height="150" style="border:1px solid #ccc; border-radius:6px; background:#fafafa; touch-action: none; width: 100%; max-width: 300px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);"></canvas>
+                        <br><button onclick="limpiarFirma('supervisor')" style="margin-top:5px; padding:8px 15px; border:none; background:#dc3545; color:white; border-radius:4px; cursor:pointer; font-size:0.85em; font-weight:bold;">🗑️ Borrar Firma</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="text-align: center; padding-bottom: 30px;">
+                <button id="btn-cancelar-edicion" onclick="cancelarEdicion()" style="display:none; background:#6c757d; color:white; padding:15px; border:none; border-radius:30px; font-size:1.1em; font-weight:bold; cursor:pointer; width:92%; max-width:400px; margin-bottom:10px; box-shadow: 0 4px 10px rgba(0,0,0,0.2);">❌ Cancelar Edición</button>
+            </div>
+            
+            <button class="btn-finalizar" id="btn-generar" onclick="generarYGuardarInforme()">Generar y Guardar Informe</button>
+        </div>
+
+        <!-- Pestaña 2: HORÓMETRO -->
+        <div id="tab-horometro" class="tab-content">
+            <div class="card">
+                <h3 style="margin-top:0; color:var(--primary);">Registro de Uso y Alertas</h3>
+                
+                <div id="status-alerta" class="alert-box alert-success" style="margin-bottom: 20px;">
+                    ✅ Estado óptimo.
+                </div>
+
+                <div class="input-group">
+                    <label>Horas acumuladas actuales:</label>
+                    <input type="text" id="horas-actuales" class="form-control" disabled style="background:#e9ecef; font-weight:bold;">
+                </div>
+                <div class="input-group">
+                    <label>Último Mantenimiento (Fecha):</label>
+                    <input type="text" id="fecha-ultimo-maint" class="form-control" disabled style="background:#e9ecef;">
+                </div>
+
+                <div style="border-top: 1px solid #ddd; margin-top:20px; padding-top:20px;">
+                    <label style="font-weight:bold; display:block; margin-bottom:5px;">Añadir horas de uso de hoy:</label>
+                    <div style="display:flex; gap:10px;">
+                        <input type="number" id="input-sumar-horas" class="form-control" placeholder="Ej: 4" min="0" step="0.5">
+                        <button onclick="sumarHoras()" style="background:var(--primary); color:white; border:none; padding:10px 15px; border-radius:6px; cursor:pointer; font-weight:bold;">Añadir</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pestaña 3: HISTORIAL -->
+        <div id="tab-historial" class="tab-content">
+            <div class="card">
+                <h3 style="margin-top:0; color:var(--primary);">Archivos Guardados</h3>
+                <p style="font-size:0.9em; color:#555;">Si un equipo tiene fallas, usa los botones para <strong>Reparar</strong> o <strong>Solicitar Repuestos</strong> a Compras.</p>
+                <div id="lista-historial"></div>
+                <button onclick="limpiarHistorial()" style="width:100%; padding:10px; margin-top:20px; background:#dc3545; color:white; border:none; border-radius:6px; cursor:pointer;">Limpiar Historial Completo</button>
+            </div>
+        </div>
+
+        <!-- Pestaña 4: INSTRUCCIONES -->
+        <div id="tab-instrucciones" class="tab-content">
+            <div id="lista-instrucciones"></div>
+        </div>
+    </div>
+
+    <!-- MODAL DE REPARACIÓN INDIVIDUAL -->
+    <div id="modal-reparacion" class="modal-overlay">
+        <div class="modal-content">
+            <h3 style="margin-top:0; color:var(--primary);">🔧 Levantamiento de Fallas</h3>
+            <p style="font-size:0.9em; color:#555;">Seleccione <strong>sólo los ítems que ha reparado hoy</strong> y agregue una nota descriptiva de la acción realizada.</p>
+            
+            <div id="lista-pendientes-modal"></div>
+            
+            <div style="display:flex; gap:10px; margin-top:20px;">
+                <button onclick="cerrarModal()" style="flex:1; padding:12px; border:none; background:#ccc; border-radius:6px; cursor:pointer; font-weight:bold;">Cancelar</button>
+                <button onclick="guardarReparacionParcial()" style="flex:1; padding:12px; border:none; background:var(--success); color:white; border-radius:6px; cursor:pointer; font-weight:bold;">Guardar Reparación</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE SOLICITUD DE REPUESTOS -->
+    <div id="modal-repuestos" class="modal-overlay">
+        <div class="modal-content">
+            <h3 style="margin-top:0; color:#17a2b8;">🛒 Solicitud de Repuestos</h3>
+            
+            <div style="background: #e9f2fb; padding: 10px; border-left: 4px solid #0056b3; margin-bottom: 15px; font-size: 0.85em; color: #004085;">
+                <strong>📌 ¿Cómo adjuntar el informe técnico?</strong><br>
+                <strong>1.</strong> Haz clic en "Descargar Documento Completo PDF" para guardar el archivo en tu equipo.<br>
+                <strong>2.</strong> Luego presiona "📧 Por Gmail" y adjunta el archivo guardado al correo.
+            </div>
+
+            <!-- BOTÓN QUE LLAMA A LA FUNCIÓN DE DESCARGA DIRECTA -->
+            <button onclick="descargarPDFDesdeModal()" style="width:100%; padding:10px; background:#6c757d; color:white; border:none; border-radius:4px; font-weight:bold; margin-bottom:15px; cursor:pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">📥 1. Descargar Documento Completo PDF</button>
+            
+            <p style="font-size:0.9em; color:#555; margin-top: 0; margin-bottom: 5px; font-weight: bold;">Texto automático generado para Compras:</p>
+            <textarea id="texto-mensaje-repuestos" style="width:100%; height:160px; padding:10px; border-radius:6px; border:1px solid #ccc; font-family:inherit; resize:vertical; box-sizing: border-box;"></textarea>
+            
+            <div style="display:flex; gap:10px; margin-top:15px; flex-wrap:wrap;">
+                <button onclick="cerrarModalRepuestos()" style="flex:1; padding:12px; border:none; background:#ccc; border-radius:6px; cursor:pointer; font-weight:bold; min-width:100px;">Cancelar</button>
+                <button onclick="enviarCorreoRepuestos()" style="flex:2; padding:12px; border:none; background:#0056b3; color:white; border-radius:6px; cursor:pointer; font-weight:bold; min-width:150px;">📧 2. Por Gmail</button>
+                <button onclick="enviarWhatsAppRepuestos()" style="flex:2; padding:12px; border:none; background:#25D366; color:white; border-radius:6px; cursor:pointer; font-weight:bold; min-width:150px;">💬 Por WhatsApp</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- VISTA FINAL DE REPORTES GENERADOS -->
+    <div id="informe-view">
+        
+        <!-- BOTONES DE DESCARGA DIRECTA -->
+        <div id="informe-botones" class="no-print" style="display:flex; gap:10px; margin-bottom: 20px; flex-wrap: wrap; background: #e9f2fb; padding: 15px; border-radius: 8px;">
+            <p style="width: 100%; margin: 0 0 10px 0; font-weight: bold; color: #0056b3;">✅ Documentos listos. Haz clic para descargar el archivo PDF directo:</p>
+            <button class="btn-exportar" onclick="descargarPDFDirecto('informe-content-dinamico', 'Informe_Completo.pdf')" style="margin-top:0; flex:1; min-width: 200px; background: #6c757d;">🖨️ Descargar Documento Completo</button>
+            <button class="btn-exportar" onclick="descargarPDFDirecto('informe-ejecutivo', 'Informe_Ejecutivo.pdf')" style="margin-top:0; flex:1; min-width: 200px; background: #0056b3;">🖨️ Descargar Solo Informe</button>
+            <button class="btn-exportar" onclick="descargarPDFDirecto('anexo-checklist', 'Checklist_Pauta.pdf')" style="margin-top:0; flex:1; min-width: 200px; background: #28a745;">🖨️ Descargar Solo Pauta</button>
+            <button class="btn-exportar" style="background: #333; margin-top:0; flex:1; min-width: 200px;" onclick="location.reload()">🔄 Volver al Sistema</button>
+        </div>
+
+        <div id="informe-content-dinamico" style="background: white; padding: 10px;"></div>
+    </div>
+
+<script>
+    // --- BASE DE DATOS EXACTA AL 100% ---
+    const baseDeDatos = {
+        "TRONZADORA DE METAL BOSCH GCO 14-24 J PROFESSIONAL": {
+            "meta": { "tipo": "Tronzadora de metal", "codigo": "EQ-BOSCH-GCO1424J-01", "marca": "BOSCH", "modelo": "GCO 14-24 J Professional", "potencia": "2400 W", "serie": "BS-938201-2026", "tension": "230 V / 50-60 Hz", "diametro": "14\" (355 mm) / Eje 25.4 mm", "velocidad": "3800 RPM" },
+            "pauta": [
+                { "id": 1, "nombre": "Cable de alimentación y aislamiento", "desc": "Inspeccionar cortes, desgaste de aislamiento, estado del enchufe y continuidad de conexión eléctrica.", "frecuencia": "40 h / 3 meses" },
+                { "id": 2, "nombre": "Interruptor ON/OFF y bloqueo de conexión", "desc": "Verificar funcionamiento del gatillo ON/OFF y accionamiento del botón de bloqueo/seguridad de conexión (1).", "frecuencia": "40 h / 3 meses" },
+                { "id": 3, "nombre": "Arranque suave electrónico (Soft Start)", "desc": "Comprobar limitación de par de encendido gradual y ausencia de picos bruscos de arranque en la red.", "frecuencia": "40 h / 3 meses" },
+                { "id": 4, "nombre": "Caperuza protectora pendular", "desc": "Verificar movimiento libre y cierre automático e independiente de la cubierta pendular sobre el disco.", "frecuencia": "40 h / 3 meses" },
+                { "id": 5, "nombre": "Cubierta protectora fija", "desc": "Inspeccionar solidez de montaje, deformaciones, fisuras o rozamiento con la cubierta pendular o disco.", "frecuencia": "40 h / 3 meses" },
+                { "id": 6, "nombre": "Chapa de protección contra chispas", "desc": "Verificar correcta orientación y montaje firme del parachispas en la base para orientar el flujo de chispas.", "frecuencia": "40 h / 3 meses" },
+                { "id": 7, "nombre": "Disco de tronzar de metal (355 x 25.4 mm)", "desc": "Inspeccionar desgaste, grietas, mellas, espesor (máx 3 mm) y velocidad certificada (EN 12413 / ≥3800 RPM).", "frecuencia": "40 h / 3 meses" },
+                { "id": 8, "nombre": "Husillo portaútiles y bloqueo de husillo", "desc": "Verificar enclavamiento del botón de bloqueo, apriete de tornillo hexagonal (18-20 Nm) y estado de bridas", "frecuencia": "40 h / 3 meses" },
+                { "id": 9, "nombre": "Tope angular y escala de ingletes (0° a 45°)", "desc": "Verificar ajuste de ángulos (0° y 45°), estado de marcas graduadas y apriete de tornillos de fijación.", "frecuencia": "40 h / 3 meses" },
+                { "id": 10, "nombre": "Ajuste de posición de tope angular (Modo ancho)", "desc": "Comprobar desplazamiento del tope a hoyos posteriores (distancia para perfiles > 140 mm) y alineación recta.", "frecuencia": "40 h / 3 meses" },
+                { "id": 11, "nombre": "Mecanismo de sujeción (Husillo / Desenclavamiento)", "desc": "Inspeccionar husillo de sujeción, palanca de accionamiento y funcionamiento del mecanismo de liberación rápida.", "frecuencia": "40 h / 3 meses" },
+                { "id": 12, "nombre": "Soporte de piezas pequeñas (Max 40x40 mm)", "desc": "Verificar encaje del gancho en la mordaza, alineación horizontal y replegado completo hacia el tope angular.", "frecuencia": "40 h / 3 meses" },
+                { "id": 13, "nombre": "Placa base y apertura de desecho", "desc": "Limpiar virutas, rebabas y acumulación de polvo metálico retenido en la cavidad inferior de la placa base.", "frecuencia": "40 h / 3 meses" },
+                { "id": 14, "nombre": "Seguro de transporte de brazo y asa", "desc": "Comprobar bloqueo/desbloqueo completo del seguro de transporte y estado estructural del asa de transporte.", "frecuencia": "40 h / 3 meses" },
+                { "id": 15, "nombre": "Ranuras de ventilación y soplado del motor", "desc": "Efectuar soplado con aire comprimido de las ranuras de ventilación para evacuar polvo metálico conductor.", "frecuencia": "40 h / 3 meses" },
+                { "id": 16, "nombre": "Escobillas de carbón y colector de motor", "desc": "Inspeccionar longitud y desgaste de escobillas de carbón, estado del conmutador y chispeo excesivo.", "frecuencia": "40 h / 3 meses" },
+                { "id": 17, "nombre": "Estructura general, pernos y patas de goma", "desc": "Verificar ajuste de tornillería general, estabilidad del equipo sobre mesa de trabajo y ausencia de vibraciones.", "frecuencia": "40 h / 3 meses" }
+            ],
+            "instrucciones": [
+                "1. ESPECIFICACIONES DE DISCO Y MONTAJE",
+                "• Diámetro exterior y eje: Utilizar exclusivamente discos de tronzar de 355 mm (14\") con agujero central de 25.4 mm (1\").",
+                "• Espesor máximo: El espesor del disco no debe superar los 3 mm.",
+                "• Especificación y norma: Usar discos aglomerados reforzados conformes a la norma EN 12413 aptos para más de 3800 RPM.",
+                "• Montaje y par de apriete: Utilizar el botón de bloqueo de husillo y la llave macho hexagonal (8 mm). El par de apriete del tornillo hexagonal debe ser de 18 - 20 Nm (sentido horario para apretar).",
+                "• Prueba de funcionamiento: Tras reemplazar el disco, hacer funcionar la máquina a vacío durante 30 segundos fuera del área de rotación.",
+                "2. DISPOSITIVOS DE SEGURIDAD Y OPERACIÓN",
+                "• Caperuza protectora pendular: Debe retornar automáticamente y cubrir por completo el disco. Jamás bloquear ni fijar la guarda abierta.",
+                "• Arranque suave (Soft Start): Limita el par de encendido permitiendo una puesta en marcha progresiva y protege el motor y la red de picos de corriente.",
+                "• Chapa parachispas : Debe estar correctamente montada en la base para canalizar las chispas lejos del operador y materiales inflamables.",
+                "• Soporte de piezas pequeñas : Para piezas de sección máx. 40x40 mm, enganchar el soporte en la mordaza . Altura máxima permitida de pieza sobre el soporte: 40 mm. Replegar completamente tras su uso.",
+                "• Posición de operación: El operador NUNCA debe colocarse en línea directa con el disco; debe situarse siempre a un costado.",
+                "3. RECOMENDACIONES DE MANTENIMIENTO Y CUIDADOS GENERALES",
+                "• Desconexión eléctrica: Desconectar siempre el enchufe de la toma de corriente antes de realizar cualquier ajuste, cambio de disco o mantenimiento.",
+                "• Limpieza de polvos metálicos: Limpiar periódicamente las ranuras de ventilación del motor."
+            ]
+        },
+        "INGLETADORA DEWALT DW714 (10\" / 254 mm)": {
+            "meta": { "tipo": "Ingletadora (Sierra de Inglete)", "codigo": "EQ-DW714-01", "marca": "DeWALT", "modelo": "DW714", "potencia": "1650 W", "serie": "", "tension": "120V - 220V / 50-60 Hz", "diametro": "10\" (254 mm) / Eje 30 mm", "velocidad": "4600 RPM" },
+            "pauta": [
+                { "id": 1, "nombre": "Cable de alimentación y enchufe", "desc": "Inspeccionar cortes, desgaste de aislamiento y polaridad adecuada del enchufe.", "frecuencia": "40 h / 3 meses" },
+                { "id": 2, "nombre": "Interruptor ON/OFF y seguro candado", "desc": "Comprobar accionamiento suave del gatillo y verificación del orificio para candado de seguridad.", "frecuencia": "40 h / 3 meses" },
+                { "id": 3, "nombre": "Escobillas de carbón (Motor)", "desc": "Inspeccionar desgaste sacando las tapas del motor. Verificar deslizamiento libre en las guías.", "frecuencia": "40 h / 3 meses" },
+                { "id": 4, "nombre": "Freno eléctrico automático", "desc": "Probar la detención completa de la hoja (debe detenerse en menos de 10 segundos tras soltar gatillo).", "frecuencia": "40 h / 3 meses" },
+                { "id": 5, "nombre": "Protector inferior de disco", "desc": "Verificar retracción automática al bajar el brazo y cobertura total al elevar el brazo. Limpiar lamas.", "frecuencia": "40 h / 3 meses" },
+                { "id": 6, "nombre": "Hoja de sierra (Disco de 10\")", "desc": "Revisar filo, estado de dientes de carburo, ausencia de fisuras/vibraciones y diámetro correcto (254 mm).", "frecuencia": "40 h / 3 meses" },
+                { "id": 7, "nombre": "Perno y bridas de fijación de hoja", "desc": "Verificar ajuste del tornillo de hoja (rosca izquierda) y estado de arandelas de abrazadera interna/externa.", "frecuencia": "40 h / 3 meses" },
+                { "id": 8, "nombre": "Bloqueo del eje (Spindle Lock)", "desc": "Inspeccionar el funcionamiento del botón de traba del eje para el cambio seguro de disco.", "frecuencia": "40 h / 3 meses" },
+                { "id": 9, "nombre": "Escala y perilla de inglete", "desc": "Comprobar ajuste a 0°, precisión de retenes automáticos (15°, 22.5°, 30°, 45°) y apriete de perilla.", "frecuencia": "40 h / 3 meses" },
+                { "id": 10, "nombre": "Escala y fijación de bisel", "desc": "Verificar alineación de la hoja a 90° con la mesa, tope a 45° a la izquierda y ajuste del perno indicador.", "frecuencia": "40 h / 3 meses" },
+                { "id": 11, "nombre": "Guías deslizantes (Fences)", "desc": "Comprobar perpendicularidad respecto a la hoja, soltura de ranuras por aserrín y ajuste de perilla.", "frecuencia": "40 h / 3 meses" },
+                { "id": 12, "nombre": "Placa de corte (Kerf Plate)", "desc": "Revisar desgaste o daño en la placa plástica central de la mesa. Reemplazar si el canal es > 10 mm.", "frecuencia": "40 h / 3 meses" },
+                { "id": 13, "nombre": "Tope de profundidad (Ranurado)", "desc": "Probar ajuste del tornillo de tope de profundidad para cortes de ranura y su retorno a posición original.", "frecuencia": "40 h / 3 meses" },
+                { "id": 14, "nombre": "Prensa / Abrazadera vertical", "desc": "Verificar fijación firme en los orificios de la base para sujetar la pieza de trabajo sin holguras.", "frecuencia": "40 h / 3 meses" },
+                { "id": 15, "nombre": "Sistema de extracción de polvo", "desc": "Limpiar boquilla de polvo y comprobar estado/vaciado de la bolsa recolectora o conector de aspiración.", "frecuencia": "40 h / 3 meses" },
+                { "id": 16, "nombre": "Ranuras de ventilación del motor", "desc": "Soplar suciedad y aserrín acumulado en las ranuras del motor con aire comprimido seco a baja presión.", "frecuencia": "40 h / 3 meses" }
+            ],
+            "instrucciones": [
+                "1. ESPECIFICACIONES DE HOJA DE SIERRA (DISCO)",
+                "• Diámetro nominal: Utilizar exclusivamente hojas de 10\" (254 mm) con agujero de eje de 30 mm.",
+                "• Velocidad nominal: La hoja debe estar diseñada para una velocidad de al menos 4600 RPM.",
+                "• Tipo de diente: Usar únicamente hojas para corte transversal (Crosscut).",
+                "• Cambio de hoja: El tornillo de la hoja tiene rosca hacia la izquierda.",
+                "2. INSPECCIÓN DE ESCOBILLAS Y FRENO ELÉCTRICO",
+                "• Verificación periódica: Desconectar la herramienta y retirar la tapa de extremo del motor.",
+                "• Freno eléctrico: El freno automático debe detener la hoja dentro de los 10 segundos.",
+                "3. RECOMENDACIONES DE SEGURIDAD Y AJUSTE DE GUÍAS",
+                "• Fijación de la pieza: Sujetar siempre el material firmemente contra la mesa y la guía."
+            ]
+        },
+        "TALADRO DE COLUMNA EINHELL TC-BD 500": {
+            "meta": { "tipo": "Taladro de columna", "codigo": "EQ-TCBD500-01", "marca": "Einhell", "modelo": "TC-BD 500", "potencia": "350W (S1) / 500W (S6 40%)", "serie": "4ZY1U4P", "tension": "230-240 V ~ 50 Hz", "diametro": "Ø 1.5 - 13 mm (B16)", "velocidad": "300 - 2410 rpm (5 vel)" },
+            "pauta": [
+                { "id": 1, "nombre": "Cable y enchufe red", "desc": "Inspeccionar cortes, desgaste del aislamiento y verificación de la clavija de tierra.", "frecuencia": "40 h / 3 meses" },
+                { "id": 2, "nombre": "Interruptor ON/OFF y disparo cero", "desc": "Comprobar encendido (I), apagado (O) y prueba del relé de mínima tensión tras corte de energía.", "frecuencia": "40 h / 3 meses" },
+                { "id": 3, "nombre": "Interruptor de seguridad de cubierta", "desc": "Inspeccionar activación del microswitch de corte cuando la cubierta de correas se abre.", "frecuencia": "40 h / 3 meses" },
+                { "id": 4, "nombre": "Correa trapezoidal (V-belt)", "desc": "Revisar desgaste, tensión (deflexión ~1 cm al centro) y alineación de poleas.", "frecuencia": "40 h / 3 meses" },
+                { "id": 5, "nombre": "Palanca y tornillo de tensión", "desc": "Limpiar y verificar libre movimiento del mecanismo tensor del motor y palanca.", "frecuencia": "40 h / 3 meses" },
+                { "id": 6, "nombre": "Protección de virutas abatible", "desc": "Limpiar acrílico, verificar ajuste en barra, tornillo fijador y movimiento abatible.", "frecuencia": "40 h / 3 meses" },
+                { "id": 7, "nombre": "Portabrocas de corona dentada", "desc": "Inspeccionar dientes, apriete con llave, ajuste en cono B16 y lubricación ligera.", "frecuencia": "40 h / 3 meses" },
+                { "id": 8, "nombre": "Husillo de perforación", "desc": "Verificar juego axial/radial, subir/bajar limpio con las 3 empuñaduras.", "frecuencia": "40 h / 3 meses" },
+                { "id": 9, "nombre": "Tope de profundidad", "desc": "Inspeccionar escala milimétrica, fijación de tornillo y repetibilidad de corte.", "frecuencia": "40 h / 3 meses" },
+                { "id": 10, "nombre": "Mesa de trabajo", "desc": "Limpiar rebabas, lubricar superficie metálica, comprobar fijación de tornillo.", "frecuencia": "40 h / 3 meses" },
+                { "id": 11, "nombre": "Inclinación de mesa (45°/0°/45°)", "desc": "Revisar soltura de tornillo Allen, lectura en escala angular y apriete.", "frecuencia": "40 h / 3 meses" },
+                { "id": 12, "nombre": "Columna de elevación", "desc": "Limpiar suciedad/aserrín acumulado y aplicar capa delgada de grasa neutra libre de ácido.", "frecuencia": "40 h / 3 meses" },
+                { "id": 13, "nombre": "Base de máquina y pernos", "desc": "Comprobar fijación a mesa/banco rígido mediante orificios y ajuste de pernos.", "frecuencia": "40 h / 3 meses" },
+                { "id": 14, "nombre": "Ranuras ventilación motor", "desc": "Limpiar con aire comprimido / cepillo para remover acumulación de polvo o viruta.", "frecuencia": "40 h / 3 meses" },
+                { "id": 15, "nombre": "Prueba de funcionamiento sin carga", "desc": "Verificar nivel de ruido, balance de correa y ausencia de vibraciones anormales.", "frecuencia": "40 h / 3 meses" },
+                { "id": 16, "nombre": "Limpieza general", "desc": "Limpiar con paño ligeramente húmedo con jabón suave; re-engrasar partes descubiertas.", "frecuencia": "40 h / 3 meses" }
+            ],
+            "instrucciones": [
+                "1. CRITERIOS DE LUBRICACIÓN",
+                "• Tipo de lubricante obligatorio: Utilizar exclusivamente grasa neutra/comercial LIBRE DE ÁCIDOS.",
+                "• Zonas críticas de engrase: Columna de acero, superficies expuestas de la mesa, cremallera de elevación y cono B16 del husillo.",
+                "2. TENCIÓN Y INSPECCIÓN DE LA CORREA TRAPEZOIDAL",
+                "• Presión manual de verificación: Al aplicar presión moderada con el pulgar en el centro de la correa.",
+                "• Inspección de desgaste: Verificar grietas, deshilachamiento o presencia de aceite/grasa.",
+                "3. RECOMENDACIONES DE SEGURIDAD ELÉCTRICA Y MECÁNICA",
+                "• Microswitch de seguridad: Probar periódicamente que el motor NO encienda con la cubierta protectora abierta."
+            ]
+        },
+        "ESMERIL DE BANCO EINHELL TC-BG 150": {
+            "meta": { "tipo": "Esmeril de banco", "codigo": "EQ-EINHELL-TCBG150-01", "marca": "EINHELL", "modelo": "TC-BG 150 (Art. 44.126.32)", "potencia": "110 W S1 / 150 W S6 15%", "serie": "EH-11019-2026", "tension": "220-240 V ~ 50 Hz", "diametro": "150 mm (Mín. 127 / Máx. 157 mm)", "velocidad": "2980 RPM / 23.4 m/s" },
+            "pauta": [
+                { "id": 1, "nombre": "Cable de alimentación y enchufe", "desc": "Inspeccionar cortes, desgaste de aislamiento y correcto estado del enchufe de red.", "frecuencia": "40 h / 3 meses" },
+                { "id": 2, "nombre": "Interruptor ON/OFF", "desc": "Comprobar el accionamiento seguro de encendido (Posición I) y apagado (Posición 0).", "frecuencia": "40 h / 3 meses" },
+                { "id": 3, "nombre": "Cristales protectores", "desc": "Verificar transparencia, limpieza, ausencia de fisuras y montaje seguro sobre el deflector de chispas.", "frecuencia": "40 h / 3 meses" },
+                { "id": 4, "nombre": "Deflectores de chispas", "desc": "Inspeccionar posición vertical y verificar que la distancia a las muelas no supere los 2 mm.", "frecuencia": "40 h / 3 meses" },
+                { "id": 5, "nombre": "Soportes de la pieza", "desc": "Verificar ajuste horizontal, solidez de fijación y distancia de separación respecto a las muelas (máx. 2 mm).", "frecuencia": "40 h / 3 meses" },
+                { "id": 6, "nombre": "Muela de lijar gruesa K36", "desc": "Inspeccionar desgaste, grietas, mellas, centrado, espesor y que el diámetro no sea inferior a 127 mm.", "frecuencia": "40 h / 3 meses" },
+                { "id": 7, "nombre": "Muela de lijar fina K60", "desc": "Inspeccionar estado de superficie, fisuras, balanceo, desgaste y diámetro mínimo de seguridad (127 mm).", "frecuencia": "40 h / 3 meses" },
+                { "id": 8, "nombre": "Cubiertas protectoras laterales", "desc": "Verificar apriete de las 3 tornillos de fijación (A) y cierre completo de las cubiertas de las muelas.", "frecuencia": "40 h / 3 meses" },
+                { "id": 9, "nombre": "Tuerca de eje (B) y Bridas (C)", "desc": "Verificar el correcto apriete de la tuerca de fijación SW 19 mm y el asentamiento de las bridas de sujeción.", "frecuencia": "40 h / 3 meses" },
+                { "id": 10, "nombre": "Placa base y orificios de fijación", "desc": "Comprobar anclaje firme mediante los 4 orificios de fijación al banco de trabajo para evitar vibraciones.", "frecuencia": "40 h / 3 meses" },
+                { "id": 11, "nombre": "Carcasa del motor y ventilación", "desc": "Limpiar virutas metálicas, polvo acumulado y restos de lijado mediante aire comprimido a baja presión.", "frecuencia": "40 h / 3 meses" },
+                { "id": 12, "nombre": "Ruidos y vibraciones anómalas", "desc": "Efectuar prueba de marcha a vacío para detectar excentricidades, desbalanceo de muelas o holgura de rodamientos.", "frecuencia": "40 h / 3 meses" }
+            ],
+            "instrucciones": [
+                "1. ESPECIFICACIONES DE MUELAS DE LIJAR Y MONTAJE",
+                "• Diámetro nominal: Utilizar muelas de 150 mm de diámetro exterior.",
+                "• Límites de desgaste: El diámetro mínimo seguro es de 127 mm.",
+                "2. AJUSTES DE SEGURIDAD OBLIGATORIOS",
+                "• Deflector de chispas: Debe ajustarse periódicamente para mantener una distancia NUNCA superior a 2 mm.",
+                "• Soporte de la pieza: Ajustar horizontalmente aproximándolo a la muela (separación máx 2 mm).",
+                "• Cristales protectores: Deben mantenerse transparentes y colocados sobre la zona de trabajo.",
+                "3. RECOMENDACIONES DE OPERACIÓN Y MANTENIMIENTO",
+                "• Régimen de trabajo S6 15%: Servicio continuo con carga intermitente."
+            ]
+        },
+        "SIERRA DE BANCO STANLEY STST1825 (10\" / 254 mm)": {
+            "meta": { "tipo": "Sierra de banco", "codigo": "EQ-STST1825-01", "marca": "STANLEY", "modelo": "STST1825", "potencia": "1800 W", "serie": "", "tension": "120V - 220V / 50-60 Hz", "diametro": "10\" (254 mm) / Eje 16 mm", "velocidad": "4800 RPM" },
+            "pauta": [
+                { "id": 1, "nombre": "Cable de alimentación y aislamiento", "desc": "Inspeccionar cortes, desgaste de aislamiento doble y estado del enchufe de corriente.", "frecuencia": "40 h / 3 meses" },
+                { "id": 2, "nombre": "Interruptor ON/OFF y llave de seguridad", "desc": "Comprobar accionamiento del interruptor y verificación de la llave de seguridad extraíble.", "frecuencia": "40 h / 3 meses" },
+                { "id": 3, "nombre": "Guarda de la hoja (Coifa protectora)", "desc": "Verificar instalación, movimiento libre de la guarda plástica y acople completo en ranura L del divisor.", "frecuencia": "40 h / 3 meses" },
+                { "id": 4, "nombre": "Lâmina separadora / Divisor de corte", "desc": "Verificar posición de trabajo, altura a 3 mm (1/8\") sobre la hoja y alineación EN LÍNEA con el disco.", "frecuencia": "40 h / 3 meses" },
+                { "id": 5, "nombre": "Trinquetes anti-contragolpe (Pawls)", "desc": "Comprobar encaje en orificio clave del divisor, traba de clavija y movimiento libre de los trinquetes.", "frecuencia": "40 h / 3 meses" },
+                { "id": 6, "nombre": "Hoja de sierra (Disco 10\" / 254 mm)", "desc": "Inspeccionar filo de dientes de carburo, ausencia de fisuras, resina u óxido y sentido horario de rotación.", "frecuencia": "40 h / 3 meses" },
+                { "id": 7, "nombre": "Perno de eje y brida (Flange)", "desc": "Verificar ajuste de la tuerca del eje con las 2 llaves inglesas suministradas y estado de las bridas.", "frecuencia": "40 h / 3 meses" },
+                { "id": 8, "nombre": "Tope paralelo / Guía de corte (Rip Fence)", "desc": "Verificar alineación a 90° con el banco, ajuste del indicador en posición '0' y fijación de placas traseras.", "frecuencia": "40 h / 3 meses" },
+                { "id": 9, "nombre": "Guía de ingletes (Graminho)", "desc": "Comprobar escala de ángulos (0° a 45°), ajuste del perno de seguro y deslizamiento suave en la ranura.", "frecuencia": "40 h / 3 meses" },
+                { "id": 10, "nombre": "Mecanismo de elevación de hoja", "desc": "Comprobar giro de la rueda e inspeccionar que la manija eleve y baje la hoja sin atascamientos.", "frecuencia": "40 h / 3 meses" },
+                { "id": 11, "nombre": "Mecanismo de biselado (0° a 45°)", "desc": "Verificar inclinación de rueda de bisel, escala graduada y apriete del collarín/anillo de parada.", "frecuencia": "40 h / 3 meses" },
+                { "id": 12, "nombre": "Placa de garganta (Throat Plate)", "desc": "Inspeccionar planeidad y desgaste de la placa de garganta de la hoja. Verificar encaje a nivel de mesa.", "frecuencia": "40 h / 3 meses" },
+                { "id": 13, "nombre": "Palanca de empuje (Push Stick)", "desc": "Verificar presencia y buen estado de la palanca de empuje para cortes paralelos angostos (< 150 mm).", "frecuencia": "40 h / 3 meses" },
+                { "id": 14, "nombre": "Mesa de extensión y rieles laterales", "desc": "Comprobar extensión suave de rieles laterales, fijación de perillas y uso de manija de transportación.", "frecuencia": "40 h / 3 meses" },
+                { "id": 15, "nombre": "Colector y puerto de aserrín", "desc": "Vaciar y limpiar el colector de aserrín inferior. Conectar y verificar sistema de extracción de polvo.", "frecuencia": "40 h / 3 meses" },
+                { "id": 16, "nombre": "Ranuras de ventilación y soporte patas", "desc": "Soplar polvo de ventilación del motor y verificar apriete de pernos del soporte y patas de goma.", "frecuencia": "40 h / 3 meses" }
+            ],
+            "instrucciones": [
+                "1. ESPECIFICACIONES DE HOJA DE SIERRA (DISCO)",
+                "• Diámetro nominal: Utilizar exclusivamente hojas de 10\" (254 mm) con agujero de eje estándar.",
+                "• Velocidad nominal: La hoja debe estar diseñada para una velocidad libre de al menos 4800 RPM.",
+                "• Cambio de hoja: Utilizar las 2 llaves inglesas suministradas.",
+                "2. AJUSTE DE SEGURIDAD Y DISPOSITIVO ANTI-CONTRAGOLPE",
+                "• Lâmina separadora / Divisor: Debe estar alineado precisamente EN LÍNEA con la hoja y fijado a 3 mm (1/8\") sobre las puntas de los dientes.",
+                "• Trinquetes anti-contragolpe: Deben instalarse sobre la ranura keyhole del divisor en posición de trabajo antes de realizar cortes longitudinales.",
+                "3. RECOMENDACIONES DE OPERACIÓN Y MANTENIMIENTO",
+                "• Ajuste de tope paralelo: Verificar siempre el ángulo a 90° respecto al banco y la calibración del indicador en \"0\" de la escala."
+            ]
+        }
+    };
+
+    let registros = {};
+    let maquinaActual = "";
+    
+    // Variables de estado
+    let estadoMaquinas = JSON.parse(localStorage.getItem('estado_talleres_maquinas') || '{}');
+    let informeEditandoId = null;
+    let informeParaRepararId = null;
+    let informeParaRepuestosId = null;
+
+    // FIRMAS LÓGICA
+    const canvases = {
+        tecnico: { el: null, ctx: null, drawing: false },
+        supervisor: { el: null, ctx: null, drawing: false }
+    };
+
+    function initCanvases() {
+        canvases.tecnico.el = document.getElementById('canvas-tecnico');
+        canvases.supervisor.el = document.getElementById('canvas-supervisor');
+        canvases.tecnico.ctx = canvases.tecnico.el.getContext('2d');
+        canvases.supervisor.ctx = canvases.supervisor.el.getContext('2d');
+        
+        setupCanvas('tecnico');
+        setupCanvas('supervisor');
+    }
+
+    function setupCanvas(key) {
+        const cvs = canvases[key];
+        cvs.ctx.lineWidth = 2;
+        cvs.ctx.lineCap = 'round';
+        cvs.ctx.strokeStyle = '#000';
+
+        const getPos = (e) => {
+            const rect = cvs.el.getBoundingClientRect();
+            const scaleX = cvs.el.width / rect.width;
+            const scaleY = cvs.el.height / rect.height;
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return {
+                x: (clientX - rect.left) * scaleX,
+                y: (clientY - rect.top) * scaleY
+            };
+        };
+
+        const start = (e) => { e.preventDefault(); cvs.drawing = true; const pos = getPos(e); cvs.ctx.beginPath(); cvs.ctx.moveTo(pos.x, pos.y); };
+        const draw = (e) => { if (!cvs.drawing) return; e.preventDefault(); const pos = getPos(e); cvs.ctx.lineTo(pos.x, pos.y); cvs.ctx.stroke(); };
+        const stop = (e) => { if(!cvs.drawing) return; e.preventDefault(); cvs.drawing = false; cvs.ctx.closePath(); };
+
+        cvs.el.addEventListener('mousedown', start);
+        cvs.el.addEventListener('mousemove', draw);
+        cvs.el.addEventListener('mouseup', stop);
+        cvs.el.addEventListener('mouseout', stop);
+
+        cvs.el.addEventListener('touchstart', start, {passive: false});
+        cvs.el.addEventListener('touchmove', draw, {passive: false});
+        cvs.el.addEventListener('touchend', stop);
+    }
+
+    function limpiarFirma(key) {
+        canvases[key].ctx.clearRect(0, 0, canvases[key].el.width, canvases[key].el.height);
+    }
+
+    function isCanvasEmpty(canvas) {
+        const blank = document.createElement('canvas');
+        blank.width = canvas.width;
+        blank.height = canvas.height;
+        return canvas.toDataURL() === blank.toDataURL();
+    }
+
+    const selector = document.getElementById('selector-maquina');
+    for (const maq in baseDeDatos) {
+        const option = document.createElement('option');
+        option.value = maq;
+        option.innerText = maq;
+        selector.appendChild(option);
+        
+        if (!estadoMaquinas[maq]) {
+            estadoMaquinas[maq] = { horas: 0, fechaUltimoMaint: new Date().toISOString().split('T')[0], serie: baseDeDatos[maq].meta.serie, ubicacion: "" };
+        }
+    }
+
+    document.getElementById('ctrl-fecha').valueAsDate = new Date();
+
+    window.onload = function() {
+        cargarDatosMaquina();
+        initCanvases();
+    };
+
+    function cambiarPestana(id) {
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+        document.getElementById(`btn-${id}`).classList.add('active');
+        document.getElementById(`tab-${id}`).classList.add('active');
+        
+        document.getElementById('selector-container').style.display = (id === 'historial' || id === 'instrucciones') ? 'none' : 'block';
+        document.getElementById('btn-generar').style.display = (id === 'inspeccion') ? 'block' : 'none';
+
+        if(id === 'historial') cargarHistorial();
+    }
+
+    function actualizarNombresFirmas() {
+        let tec = document.getElementById('ctrl-tecnico').value;
+        let sup = document.getElementById('ctrl-supervisor').value;
+        document.getElementById('lbl-firma-tecnico').innerText = tec ? `Firma Técnico: ${tec}` : "Firma Técnico Responsable";
+        document.getElementById('lbl-firma-supervisor').innerText = sup ? `Firma Supervisor: ${sup}` : "Firma Supervisor";
+    }
+
+    function cargarDatosMaquina() {
+        maquinaActual = selector.value;
+        const datos = baseDeDatos[maquinaActual];
+        const estado = estadoMaquinas[maquinaActual];
+        
+        document.getElementById('info-tecnica-equipo').innerHTML = `
+            <table class="tabla-tecnica">
+                <tr><td class="td-bg">Código Equipo:</td><td><strong>${datos.meta.codigo}</strong></td><td class="td-bg">Marca:</td><td><strong>${datos.meta.marca}</strong></td><td class="td-bg">Modelo:</td><td><strong>${datos.meta.modelo}</strong></td></tr>
+                <tr><td class="td-bg">Potencia:</td><td>${datos.meta.potencia}</td><td class="td-bg">Tensión / Freq:</td><td>${datos.meta.tension}</td><td class="td-bg">Accesorio:</td><td>${datos.meta.diametro}</td></tr>
+                <tr><td class="td-bg">Velocidad:</td><td colspan="5">${datos.meta.velocidad}</td></tr>
+            </table>
+        `;
+        
+        let isEditing = informeEditandoId !== null;
+        let disabledPointer = isEditing ? 'style="pointer-events:none; opacity:0.6;"' : '';
+        let disabledInput = isEditing ? 'readonly style="background:#e9ecef;"' : '';
+
+        if(!isEditing) {
+            document.getElementById('ctrl-serie').value = datos.meta.serie ? datos.meta.serie : (estado.serie || "");
+            document.getElementById('ctrl-ubicacion').value = estado.ubicacion || "";
+            document.getElementById('ctrl-fecha').valueAsDate = new Date();
+            document.getElementById('ctrl-horas-edit').value = estado.horas;
+            if(canvases.tecnico.ctx) limpiarFirma('tecnico');
+            if(canvases.supervisor.ctx) limpiarFirma('supervisor');
+        }
+
+        const contenedorTareas = document.getElementById('lista-tareas');
+        contenedorTareas.innerHTML = ""; 
+        registros = {}; 
+
+        datos.pauta.forEach(tarea => {
+            let estadoInicialDeUI = 'Bueno';
+            let obsInicial = '';
+            let accionInicial = '';
+
+            if (isEditing) {
+                let hist = JSON.parse(localStorage.getItem('historial_informes_itpa') || '[]');
+                let infAnt = hist.find(i => i.id === informeEditandoId);
+                if (infAnt && infAnt.tareas) {
+                    let tarAnt = infAnt.tareas.find(t => t.id === tarea.id);
+                    if (tarAnt) {
+                        estadoInicialDeUI = tarAnt.estadoOriginal;
+                        obsInicial = tarAnt.obs || '';
+                        accionInicial = tarAnt.accion || '';
+                        if (tarAnt.reparado) {
+                            estadoInicialDeUI = 'Bueno'; 
+                            obsInicial = ''; 
+                            accionInicial = '';
+                        }
+                    }
+                }
+            }
+
+            registros[tarea.id] = { estado: estadoInicialDeUI, obs: obsInicial, accion: accionInicial, nombre: tarea.nombre, desc: tarea.desc };
+            
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.innerHTML = `
+                <div class="card-title">${tarea.id}. ${tarea.nombre}</div>
+                <div class="card-desc">${tarea.desc}</div>
+                <div class="card-frec">Frecuencia recomendada: ${tarea.frecuencia}</div>
+                <div class="btn-group" ${disabledPointer}>
+                    <button class="btn-estado ${estadoInicialDeUI === 'Bueno' ? 'selected' : ''}" data-val="Bueno" onclick="seleccionarEstado(this, ${tarea.id}, 'Bueno')">Bueno</button>
+                    <button class="btn-estado ${estadoInicialDeUI === 'Regular' ? 'selected' : ''}" data-val="Regular" onclick="seleccionarEstado(this, ${tarea.id}, 'Regular')">Regular</button>
+                    <button class="btn-estado ${estadoInicialDeUI === 'Malo' ? 'selected' : ''}" data-val="Malo" onclick="seleccionarEstado(this, ${tarea.id}, 'Malo')">Malo</button>
+                </div>
+                <div class="hallazgo-container ${estadoInicialDeUI === 'Regular' ? 'regular' : ''}" id="hallazgo-${tarea.id}" style="display: ${estadoInicialDeUI !== 'Bueno' ? 'block' : 'none'};">
+                    <div class="input-group">
+                        <label>Descripción técnica de la anomalía:</label>
+                        <input type="text" class="form-control" placeholder="Ej: Falta protección..." oninput="registros[${tarea.id}].obs = this.value" value="${obsInicial}" ${disabledInput}>
+                    </div>
+                    <div class="input-group" style="margin-bottom:0;">
+                        <label>Acción Correctiva (Propuesta):</label>
+                        <input type="text" class="form-control" placeholder="Ej: Adquirir e instalar..." oninput="registros[${tarea.id}].accion = this.value" value="${accionInicial}" ${disabledInput}>
+                    </div>
+                </div>
+            `;
+            contenedorTareas.appendChild(card);
+        });
+
+        const contenedorInst = document.getElementById('lista-instrucciones');
+        contenedorInst.innerHTML = `<h3 style="color:var(--primary); margin-top:0;">Manual Técnico: ${datos.meta.modelo}</h3>`;
+        datos.instrucciones.forEach(linea => {
+            if (linea.match(/^[0-9]\./)) { 
+                contenedorInst.innerHTML += `<div class="instruccion-titulo">${linea}</div>`;
+            } else {
+                contenedorInst.innerHTML += `<div class="instruccion-item">${linea}</div>`;
+            }
+        });
+
+        actualizarHorometro(estado);
+        actualizarNombresFirmas();
+    }
+
+    function actualizarHorometro(estado) {
+        document.getElementById('horas-actuales').value = estado.horas + " hrs";
+        document.getElementById('fecha-ultimo-maint').value = new Date(estado.fechaUltimoMaint).toLocaleDateString('es-ES');
+        
+        let diasMaint = Math.floor((new Date() - new Date(estado.fechaUltimoMaint)) / (1000 * 60 * 60 * 24));
+        let alertaBoxHoras = document.getElementById('status-alerta');
+        let alertaBoxInspeccion = document.getElementById('alerta-inspeccion');
+        
+        let mensaje = "";
+        let esPeligro = false;
+
+        if (estado.horas >= 35 || diasMaint >= 75) { 
+            esPeligro = true;
+            mensaje = `⚠️ ¡ATENCIÓN! Mantenimiento próximo requerido.<br>Horas: ${estado.horas}/40 hrs | Días transcurridos: ${diasMaint}/90 días.`;
+        } else {
+            mensaje = `✅ Estado óptimo. Horas: ${estado.horas}/40 hrs | Días transcurridos: ${diasMaint}/90 días.`;
+        }
+
+        alertaBoxHoras.className = esPeligro ? "alert-box alert-danger" : "alert-box alert-success";
+        alertaBoxHoras.innerHTML = mensaje;
+        alertaBoxInspeccion.className = esPeligro ? "alert-box alert-danger" : "alert-box alert-success";
+        alertaBoxInspeccion.innerHTML = mensaje;
+    }
+
+    function sumarHoras() {
+        const add = parseFloat(document.getElementById('input-sumar-horas').value);
+        if(isNaN(add) || add <= 0) return alert("Ingrese un número válido mayor a 0.");
+        
+        estadoMaquinas[maquinaActual].horas += add;
+        localStorage.setItem('estado_talleres_maquinas', JSON.stringify(estadoMaquinas));
+        document.getElementById('input-sumar-horas').value = "";
+        actualizarHorometro(estadoMaquinas[maquinaActual]);
+        
+        if(!informeEditandoId) {
+            document.getElementById('ctrl-horas-edit').value = estadoMaquinas[maquinaActual].horas;
+        }
+
+        alert(`Se han añadido ${add} horas a la máquina ${baseDeDatos[maquinaActual].meta.modelo}.`);
+    }
+
+    function seleccionarEstado(btn, id, estado) {
+        const grupo = btn.parentElement.querySelectorAll('.btn-estado');
+        grupo.forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        
+        registros[id].estado = estado;
+        const caja = document.getElementById(`hallazgo-${id}`);
+        
+        if (estado !== 'Bueno') {
+            caja.style.display = 'block';
+            caja.className = estado === 'Regular' ? 'hallazgo-container regular' : 'hallazgo-container';
+        } else {
+            caja.style.display = 'none';
+            caja.querySelectorAll('input').forEach(i => i.value = '');
+            registros[id].obs = ''; registros[id].accion = '';
+        }
+    }
+
+    // --- NUEVO: FUNCIÓN PARA DESCARGAR PDF DIRECTO (html2pdf) ---
+    function descargarPDFDirecto(seccionId, nombreArchivo) {
+        if (typeof html2pdf === 'undefined') {
+            alert("No se pudo cargar el motor de PDF (se requiere internet para la descarga directa). Se abrirá la impresión estándar.");
+            imprimirSeccion(seccionId);
+            return;
+        }
+
+        const btnBox = document.getElementById('informe-botones');
+        const separador = document.getElementById('separador-informes');
+        
+        if(btnBox) btnBox.style.display = 'none';
+        if(separador) separador.style.display = 'none';
+
+        const infEjecutivo = document.getElementById('informe-ejecutivo');
+        const anexoCheck = document.getElementById('anexo-checklist');
+        
+        let originalDisplayInf = infEjecutivo ? infEjecutivo.style.display : '';
+        let originalDisplayAnex = anexoCheck ? anexoCheck.style.display : '';
+
+        if(seccionId === 'informe-ejecutivo') {
+            if(anexoCheck) anexoCheck.style.display = 'none';
+        } else if (seccionId === 'anexo-checklist') {
+            if(infEjecutivo) infEjecutivo.style.display = 'none';
+        }
+
+        const elementoBase = document.getElementById('informe-content-dinamico');
+        
+        // El salto de página dinámico para la librería
+        const saltoCSS = document.querySelector('.salto-pagina');
+        if(saltoCSS) saltoCSS.style.pageBreakBefore = 'always';
+
+        var opt = {
+            margin:       10,
+            filename:     nombreArchivo,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2, useCORS: true },
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
+            pagebreak:    { mode: ['css', 'legacy'] }
+        };
+
+        html2pdf().set(opt).from(elementoBase).save().then(() => {
+            if(btnBox) btnBox.style.display = 'flex';
+            if(separador) separador.style.display = 'block';
+            if(infEjecutivo) infEjecutivo.style.display = originalDisplayInf;
+            if(anexoCheck) anexoCheck.style.display = originalDisplayAnex;
+        });
+    }
+
+    function imprimirSeccion(seccionId) {
+        const contentDinamico = document.getElementById('informe-content-dinamico');
+        const infEjecutivo = contentDinamico.querySelector('#informe-ejecutivo');
+        const anexoCheck = contentDinamico.querySelector('#anexo-checklist');
+        const separador = contentDinamico.querySelector('#separador-informes');
+        
+        if(seccionId === 'informe-ejecutivo') {
+            if(anexoCheck) anexoCheck.style.display = 'none';
+            if(separador) separador.style.display = 'none';
+        } else {
+            if(infEjecutivo) infEjecutivo.style.display = 'none';
+            if(separador) separador.style.display = 'none';
+        }
+        
+        window.print();
+        
+        if(infEjecutivo) infEjecutivo.style.display = 'block';
+        if(anexoCheck) anexoCheck.style.display = 'block';
+        if(separador) separador.style.display = 'block';
+    }
+
+    function generarYGuardarInforme() {
+        const meta = baseDeDatos[maquinaActual].meta;
+        const fechaInp = document.getElementById('ctrl-fecha').value;
+        const tecnico = document.getElementById('ctrl-tecnico').value || "No especificado";
+        const supervisor = document.getElementById('ctrl-supervisor').value || "No especificado";
+        const serie = document.getElementById('ctrl-serie').value || "S/N";
+        const ubicacion = document.getElementById('ctrl-ubicacion').value || "Taller Principal";
+        const horasReporte = document.getElementById('ctrl-horas-edit').value || 0; 
+        
+        let fechaBase = fechaInp ? new Date(fechaInp + "T00:00:00") : new Date();
+
+        if(!informeEditandoId) {
+            estadoMaquinas[maquinaActual].serie = serie;
+            estadoMaquinas[maquinaActual].ubicacion = ubicacion;
+        }
+
+        let tareasReporte = [];
+        baseDeDatos[maquinaActual].pauta.forEach(tarea => {
+            const data = registros[tarea.id];
+            
+            let manteniaReparado = false;
+            let fr = null;
+            let nr = "";
+            let estadoOriginalGuardado = data.estado; 
+
+            if(informeEditandoId) {
+                let hist = JSON.parse(localStorage.getItem('historial_informes_itpa') || '[]');
+                let infAnt = hist.find(i => i.id === informeEditandoId);
+                if(infAnt) {
+                    let tarAnt = infAnt.tareas.find(t => t.id === tarea.id);
+                    if(tarAnt) {
+                        estadoOriginalGuardado = tarAnt.estadoOriginal; 
+                        if (tarAnt.reparado) {
+                            manteniaReparado = true;
+                            fr = tarAnt.fechaReparacion;
+                            nr = tarAnt.notaReparacion;
+                        }
+                    }
+                }
+            }
+
+            tareasReporte.push({
+                id: tarea.id,
+                nombre: tarea.nombre,
+                desc: tarea.desc,
+                estadoOriginal: estadoOriginalGuardado,
+                obs: data.obs,
+                accion: data.accion,
+                reparado: manteniaReparado, 
+                fechaReparacion: manteniaReparado ? fr : null,
+                notaReparacion: manteniaReparado ? nr : ""
+            });
+        });
+
+        let firmaTec = isCanvasEmpty(canvases.tecnico.el) ? null : canvases.tecnico.el.toDataURL();
+        let firmaSup = isCanvasEmpty(canvases.supervisor.el) ? null : canvases.supervisor.el.toDataURL();
+        
+        if(informeEditandoId) {
+            let hist = JSON.parse(localStorage.getItem('historial_informes_itpa') || '[]');
+            let infAntiguo = hist.find(i => i.id === informeEditandoId);
+            if(infAntiguo) {
+                if(!firmaTec && infAntiguo.firmaTecnico) firmaTec = infAntiguo.firmaTecnico;
+                if(!firmaSup && infAntiguo.firmaSupervisor) firmaSup = infAntiguo.firmaSupervisor;
+            }
+        }
+
+        const informeData = {
+            id: informeEditandoId ? informeEditandoId : Date.now(),
+            fecha: fechaBase.toISOString(),
+            maquina: maquinaActual,
+            inspector: tecnico,
+            supervisor: supervisor,
+            firmaTecnico: firmaTec,
+            firmaSupervisor: firmaSup,
+            serie: serie,
+            ubicacion: ubicacion,
+            horas: horasReporte, 
+            meta: meta,
+            tareas: tareasReporte
+        };
+
+        informeData.estado = calcularEstadoGlobal(tareasReporte);
+
+        let historial = JSON.parse(localStorage.getItem('historial_informes_itpa') || '[]');
+        if (informeEditandoId) {
+            let index = historial.findIndex(i => i.id === informeEditandoId);
+            if(index !== -1) historial[index] = informeData;
+        } else {
+            historial.unshift(informeData);
+        }
+        localStorage.setItem('historial_informes_itpa', JSON.stringify(historial));
+
+        if(!informeEditandoId) {
+            estadoMaquinas[maquinaActual].horas = 0;
+            estadoMaquinas[maquinaActual].fechaUltimoMaint = fechaBase.toISOString().split('T')[0];
+            localStorage.setItem('estado_talleres_maquinas', JSON.stringify(estadoMaquinas));
+        }
+
+        informeEditandoId = null;
+        document.getElementById('btn-generar').innerText = "Generar y Guardar Informe";
+        document.getElementById('btn-cancelar-edicion').style.display = "none";
+        document.getElementById('selector-maquina').disabled = false;
+
+        alert("✅ Informe y Checklist guardados con éxito.");
+        renderizarPDF(informeData);
+    }
+
+    function renderizarPDF(informe) {
+        const contentDiv = document.getElementById('informe-content-dinamico');
+        
+        const f = new Date(informe.fecha);
+        const timeStr = f.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
+        const fechaFormat = f.toLocaleDateString('es-CL', { day: '2-digit', month: 'long', year: 'numeric' }) + ` a las ${timeStr} hrs`;
+        
+        let fechaProx = new Date(f);
+        fechaProx.setDate(fechaProx.getDate() + 90);
+        let fechaProxStr = fechaProx.toLocaleDateString('es-CL', { day: '2-digit', month: 'long', year: 'numeric' });
+
+        const hallazgos = informe.tareas.filter(t => t.estadoOriginal !== 'Bueno');
+        const criticosNoReparados = informe.tareas.filter(t => t.estadoOriginal === 'Malo' && !t.reparado);
+        const menoresNoReparados = informe.tareas.filter(t => t.estadoOriginal === 'Regular' && !t.reparado);
+
+        let tablaAnomaliasHTML = "";
+        let listaAccionesHTML = "";
+        let displayAnomalias = "none";
+        let resumenDiagnostico = "La evaluación técnica general determinó que el equipo se encuentra en excelentes condiciones operativas. No se detectaron anomalías ni componentes faltantes.";
+        let textoConclusion = "<strong>Estado: Aprobado.</strong> La máquina está totalmente operativa y cumple con los estándares de seguridad para su uso.";
+
+        if (hallazgos.length > 0) {
+            displayAnomalias = "table";
+            resumenDiagnostico = "La evaluación técnica determinó que el equipo presenta las siguientes anomalías operativas y/o de seguridad detectadas en el momento de la inspección:";
+            
+            hallazgos.forEach(t => {
+                let gravedadTxt = t.estadoOriginal === 'Malo' ? "Crítico" : "Menor";
+                let estiloGravedad = t.estadoOriginal === 'Malo' ? "color:red;" : "color:#b8860b;";
+                
+                if(t.reparado) {
+                    gravedadTxt = `<span style="color:#28a745;">✅ BUENO</span>`;
+                    estiloGravedad = "";
+                }
+
+                tablaAnomaliasHTML += `
+                    <tr>
+                        <td><strong>${t.nombre}</strong></td>
+                        <td>${t.reparado ? "<em>Anomalía solucionada</em>" : (t.obs || "Anomalía visual o mecánica reportada.")}</td>
+                        <td>${t.reparado ? t.notaReparacion : (t.accion || "Revisar o cambiar pieza.")}</td>
+                        <td style="font-weight:bold; ${estiloGravedad} text-align:center;">${gravedadTxt}</td>
+                    </tr>
+                `;
+                
+                if(!t.reparado) {
+                    listaAccionesHTML += `<li>Efectuar mantenimiento sobre: ${t.nombre.toLowerCase()}.</li>`;
+                }
+            });
+
+            if(listaAccionesHTML === "") {
+                 listaAccionesHTML = `<li>Todas las acciones correctivas listadas han sido ejecutadas exitosamente.</li>`;
+            }
+
+            if (criticosNoReparados.length > 0) {
+                textoConclusion = "<strong>Estado: Rechazado / Fuera de servicio.</strong> La máquina presenta fallas críticas que impiden su operación segura. Debe bloquearse su uso hasta aplicar las correcciones pertinentes.";
+            } else if (menoresNoReparados.length > 0) {
+                textoConclusion = "<strong>Estado: Operativo con Pendientes.</strong> La máquina está funcional, pero requiere pronta atención en los hallazgos menores descritos.";
+            } else {
+                textoConclusion = "<strong>Estado: Aprobado / Recuperado.</strong> La máquina se encuentra totalmente operativa y liberada para su uso (Las anomalías previas fueron solucionadas).";
+            }
+        } else {
+            listaAccionesHTML = `<li>Ninguna acción correctiva requerida en esta oportunidad. Mantener limpieza diaria.</li>`;
+        }
+
+        let selloReparacionHTML = "";
+        let tareasReparadas = hallazgos.filter(t => t.reparado);
+        if (tareasReparadas.length > 0) {
+            let detalles = tareasReparadas.map(t => `- <strong>${t.nombre}:</strong> ${t.notaReparacion}`).join("<br>");
+            let fechas = tareasReparadas.map(t => new Date(t.fechaReparacion).getTime());
+            let maxFecha = new Date(Math.max(...fechas)).toLocaleDateString('es-CL');
+            
+            selloReparacionHTML = `
+            <div style="margin-top: 25px; padding: 15px; border: 2px solid #28a745; background-color: #d4edda; border-radius: 8px;">
+                <h4 style="color: #155724; margin: 0 0 10px 0; text-transform: uppercase;">✅ Constancia de Reparación Técnica</h4>
+                <p style="margin: 0; font-size: 0.95em;"><strong>Última intervención:</strong> ${maxFecha}</p>
+                <p style="margin: 5px 0 0 0; font-size: 0.95em;"><strong>Trabajos ejecutados:</strong><br> ${detalles}</p>
+            </div>`;
+        }
+
+        let tablaAnexoHTML = "";
+        informe.tareas.forEach(tarea => {
+            let colorInicial = "green";
+            if(tarea.estadoOriginal === "Malo") colorInicial = "red";
+            if(tarea.estadoOriginal === "Regular") colorInicial = "#b8860b";
+            
+            let estadoActualHTML = "";
+            if (tarea.estadoOriginal === "Bueno") {
+                estadoActualHTML = `<span style="color:green;">BUENO</span>`;
+            } else if (tarea.reparado) {
+                let fr = new Date(tarea.fechaReparacion).toLocaleDateString('es-CL');
+                estadoActualHTML = `<span style="color:green; font-weight:bold;">BUENO</span><br><span style="font-size:0.75em; color:#555;">(Reparado: ${fr})</span>`;
+            } else {
+                estadoActualHTML = `<span style="color:red; font-weight:bold;">PENDIENTE</span>`;
+            }
+
+            tablaAnexoHTML += `
+                <tr>
+                    <td style="text-align:center;">${tarea.id}</td>
+                    <td><strong>${tarea.nombre}</strong><br><span style="font-size:0.8em; color:#666;">${tarea.desc}</span></td>
+                    <td style="font-weight:bold; color:${colorInicial}; text-align:center;">${tarea.estadoOriginal.toUpperCase()}</td>
+                    <td style="text-align:center;">${estadoActualHTML}</td>
+                </tr>
+            `;
+        });
+
+        let textoFechaRep = "<em>No requiere</em>";
+        if (hallazgos.length > 0) {
+            let todosReparados = hallazgos.every(h => h.reparado);
+            if (todosReparados) {
+                let fechas = hallazgos.map(h => new Date(h.fechaReparacion).getTime());
+                let maxF = new Date(Math.max(...fechas)).toLocaleDateString('es-CL');
+                textoFechaRep = `<span style='color:green; font-weight:bold;'>${maxF} (Completada)</span>`;
+            } else {
+                textoFechaRep = "<span style='color:red; font-weight:bold;'>Pendiente de reparación</span>";
+            }
+        }
+
+        let firmaT = informe.firmaTecnico ? `<img src="${informe.firmaTecnico}" class="firma-img">` : "<div style='height:80px;'></div>";
+        let firmaS = informe.firmaSupervisor ? `<img src="${informe.firmaSupervisor}" class="firma-img">` : "<div style='height:80px;'></div>";
+
+        contentDiv.innerHTML = `
+            <div id="informe-ejecutivo" style="background:white;">
+                <div class="doc-title">Informe Técnico De Inspección Mecánica</div>
+                
+                <div class="seccion-titulo">Datos del equipo</div>
+                <table class="doc-table">
+                    <tr><td class="col-header">Código Equipo</td><td>${informe.meta.codigo}</td></tr>
+                    <tr><td class="col-header">Tipo de maquina</td><td>${informe.meta.tipo}</td></tr>
+                    <tr><td class="col-header">Marca</td><td>${informe.meta.marca}</td></tr>
+                    <tr><td class="col-header">Modelo</td><td>${informe.meta.modelo}</td></tr>
+                    <tr><td class="col-header">Número de serie</td><td>${informe.serie}</td></tr>
+                    <tr><td class="col-header">Tensión / Frecuencia</td><td>${informe.meta.tension}</td></tr>
+                    <tr><td class="col-header">Accesorio / Diámetro</td><td>${informe.meta.diametro}</td></tr>
+                    <tr><td class="col-header">Potencia</td><td>${informe.meta.potencia}</td></tr>
+                    <tr><td class="col-header">Velocidad sin carga</td><td>${informe.meta.velocidad}</td></tr>
+                    <tr><td class="col-header">Ubicación</td><td>${informe.ubicacion}</td></tr>
+                </table>
+
+                <div class="seccion-titulo">Datos de control</div>
+                <table class="doc-table">
+                    <tr><td class="col-header">Fecha y Hora de revisión</td><td>${fechaFormat}</td></tr>
+                    <tr><td class="col-header">Técnico responsable</td><td>${informe.inspector}</td></tr>
+                    <tr><td class="col-header">Supervisor responsable</td><td>${informe.supervisor}</td></tr>
+                    <tr><td class="col-header">Horas uso acumuladas</td><td>${informe.horas} hrs</td></tr>
+                </table>
+
+                <div class="seccion-titulo">Objetivo</div>
+                <p class="doc-text">El presente informe técnico tiene como finalidad diagnosticar y documentar el estado operativo real de la máquina para facilitar la toma de decisiones informadas sobre su mantenimiento y continuity operativa.</p>
+
+                <div class="seccion-titulo">Alcance de la Inspección</div>
+                <ul class="doc-list">
+                    <li>Sistemas de accionamiento eléctrico motriz y continuidad de cableado.</li>
+                    <li>Verificación de desgaste y calibración de los elementos de corte / abrasión.</li>
+                    <li>Operatividad de dispositivos de seguridad, frenos y guardas protectoras.</li>
+                    <li>Integridad de la estructura física, fijaciones y limpieza de ductos de ventilación.</li>
+                </ul>
+
+                <div class="seccion-titulo">Presentación de Hallazgos y Diagnóstico</div>
+                <p class="doc-text">${resumenDiagnostico}</p>
+                
+                <table class="doc-table" style="display:${displayAnomalias};">
+                    <thead>
+                        <tr>
+                            <th style="width: 25%;">Componente Evaluado</th>
+                            <th style="width: 40%;">Anomalía Detectada</th>
+                            <th style="width: 20%;">Acción Sugerida</th>
+                            <th style="width: 15%; text-align: center;">Nivel de Falla</th>
+                        </tr>
+                    </thead>
+                    <tbody>${tablaAnomaliasHTML}</tbody>
+                </table>
+
+                ${selloReparacionHTML}
+
+                <div class="seccion-titulo">Propuesta de Acciones Correctivas</div>
+                <ul class="doc-list">${listaAccionesHTML}</ul>
+                <p class="doc-text"><strong>Responsable de ejecución:</strong> ${informe.supervisor}<br>
+                <strong>Mantenimiento Rutinario:</strong> Ejecutar la próxima revisión preventiva a más tardar el <strong>${fechaProxStr}</strong> o al alcanzar las 40 horas de uso.</p>
+
+                <div class="seccion-titulo">Conclusión y Estado Operativo</div>
+                <p class="doc-text">${textoConclusion}</p>
+
+                <div class="firmas-grid">
+                    <div class="firma-col">
+                        ${firmaT}
+                        <div class="firma-linea">Nombre y firma<br>Técnico responsable<br><strong>${informe.inspector}</strong></div>
+                    </div>
+                    <div class="firma-col">
+                        ${firmaS}
+                        <div class="firma-linea">Nombre y firma<br>Supervisor responsable<br><strong>${informe.supervisor}</strong></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="separador-informes" class="no-print" style="text-align:center; padding: 20px; background:#f8f9fa; border: 2px dashed #ccc; margin: 40px 0;">
+                <h3 style="color:#6c757d; margin:0;">✂️ Separación de Documentos ✂️</h3>
+                <p style="margin:5px 0 0 0; color:#6c757d; font-size:0.9em;">(Use los botones azules de arriba para descargar cada documento por separado en PDF)</p>
+            </div>
+
+            <!-- DOCUMENTO 2: ANEXO DE CHECKLIST -->
+            <div id="anexo-checklist" style="background:white;">
+                <div class="salto-pagina" style="padding-top: 20px;">
+                    <div class="seccion-titulo" style="margin-top: 0; font-size: 1.2em;">Anexo: Pauta de Inspección Técnica (Checklist)</div>
+                    
+                    <div style="border: 1px solid #000; padding: 10px; margin-bottom: 15px; font-size: 0.9em; background-color: #fafafa;">
+                        <table style="width: 100%; border: none; border-collapse: collapse;">
+                            <tr>
+                                <td style="width: 50%; padding: 4px; border:none;"><strong>Técnico Responsable:</strong> ${informe.inspector}</td>
+                                <td style="width: 50%; padding: 4px; border:none;"><strong>Fecha de Revisión:</strong> ${f.toLocaleDateString('es-CL')}</td>
+                            </tr>
+                            <tr>
+                                <td style="width: 50%; padding: 4px; border:none;"><strong>Supervisor:</strong> ${informe.supervisor}</td>
+                                <td style="width: 50%; padding: 4px; border:none;"><strong>Fecha de Reparación:</strong> ${textoFechaRep}</td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    <p class="doc-text">El siguiente cuadro refleja la evaluación pormenorizada de todos los puntos de la pauta de mantenimiento aplicados a la máquina en la fecha de revisión indicada.</p>
+                    <table class="doc-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 5%; text-align: center;">N°</th>
+                                <th style="width: 45%;">Componente / Actividad de Verificación</th>
+                                <th style="width: 15%; text-align: center;">Estado Inicial</th>
+                                <th style="width: 35%; text-align: center;">Estado Actual</th>
+                            </tr>
+                        </thead>
+                        <tbody>${tablaAnexoHTML}</tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+
+        document.getElementById('app-view').style.display = 'none';
+        document.getElementById('informe-view').style.display = 'block';
+        window.scrollTo(0, 0);
+    }
+
+    function calcularEstadoGlobal(tareas) {
+        let tieneCriticosPendientes = tareas.some(t => t.estadoOriginal === 'Malo' && !t.reparado);
+        let tieneMenoresPendientes = tareas.some(t => t.estadoOriginal === 'Regular' && !t.reparado);
+        let teniaFallas = tareas.some(t => t.estadoOriginal !== 'Bueno');
+
+        if (tieneCriticosPendientes) return "Rechazado (Peligro)";
+        if (tieneMenoresPendientes) return "Operativo con Pendientes";
+        if (teniaFallas) return "Reparado (Óptimo)";
+        return "Óptimo";
+    }
+
+    function cargarHistorial() {
+        const contenedor = document.getElementById('lista-historial');
+        let historial = JSON.parse(localStorage.getItem('historial_informes_itpa') || '[]');
+        
+        if(historial.length === 0) {
+            contenedor.innerHTML = "<p>No hay informes guardados todavía.</p>";
+            return;
+        }
+
+        contenedor.innerHTML = "";
+        historial.forEach((informe) => {
+            const div = document.createElement('div');
+            div.className = "historial-item";
+            
+            let colorBg = (informe.estado === "Óptimo" || informe.estado === "Reparado (Óptimo)") ? "#d4edda" : (informe.estado === "Operativo con Pendientes" ? "#fff3cd" : "#f8d7da");
+            let colorText = (informe.estado === "Óptimo" || informe.estado === "Reparado (Óptimo)") ? "#155724" : (informe.estado === "Operativo con Pendientes" ? "#856404" : "#721c24");
+            
+            let necesitaReparar = informe.estado.includes("Rechazado") || informe.estado.includes("Pendientes");
+            let botonReparar = necesitaReparar && informe.tareas
+                ? `<button class="btn-reparar" onclick="abrirModalReparacion(${informe.id})">🔧 Registrar Reparación</button>` 
+                : "";
+            
+            let botonRepuestos = necesitaReparar && informe.tareas
+                ? `<button class="btn-repuestos" onclick="abrirModalRepuestos(${informe.id})">🛒 Solicitar Repuestos</button>` 
+                : "";
+
+            let divBotonesEdicion = informe.tareas 
+                ? `<div style="display: flex; gap: 5px; margin-bottom: 5px;">
+                        <button class="btn-ver" style="background:#ffc107; color:#212529; flex:1; margin-top:0;" onclick="editarReporte(${informe.id})" title="Editar Pauta">✏️ Editar</button>
+                        <button class="btn-ver" style="background:#dc3545; flex:1; margin-top:0;" onclick="eliminarReporte(${informe.id})" title="Borrar Informe">🗑️ Borrar</button>
+                   </div>` 
+                : `<button class="btn-ver" style="background:#dc3545; width:100%; margin-top:0; margin-bottom: 5px;" onclick="eliminarReporte(${informe.id})" title="Borrar Informe">🗑️ Borrar</button>`;
+
+            div.innerHTML = `
+                <div style="flex:1;">
+                    <strong>${new Date(informe.fecha).toLocaleDateString('es-CL')} - ${informe.maquina}</strong><br>
+                    <span style="font-size:0.85em; color:#666;">Insp: ${informe.inspector}</span><br>
+                    <span style="display:inline-block; margin-top:5px; padding:3px 8px; border-radius:4px; font-size:0.85em; font-weight:bold; background:${colorBg}; color:${colorText};">${informe.estado}</span>
+                </div>
+                <div style="display: flex; flex-direction: column; width: 170px; text-align: right;">
+                    ${botonReparar}
+                    ${botonRepuestos}
+                    ${divBotonesEdicion}
+                    <button class="btn-ver" style="margin-top:0;" onclick="verReporteAntiguo(${informe.id})">📄 Ver PDF</button>
+                </div>
+            `;
+            contenedor.appendChild(div);
+        });
+    }
+
+    function eliminarReporte(id) {
+        if(confirm("¿Estás seguro que deseas eliminar este informe permanentemente?")) {
+            let historial = JSON.parse(localStorage.getItem('historial_informes_itpa') || '[]');
+            historial = historial.filter(i => i.id !== id);
+            localStorage.setItem('historial_informes_itpa', JSON.stringify(historial));
+            cargarHistorial();
+        }
+    }
+
+    function editarReporte(id) {
+        let historial = JSON.parse(localStorage.getItem('historial_informes_itpa') || '[]');
+        const informe = historial.find(i => i.id === id);
+        
+        if(!informe || !informe.tareas) {
+            alert("Este informe es de una versión antigua de la aplicación y no soporta edición interactiva. Solo puede borrarse.");
+            return;
+        }
+
+        informeEditandoId = id;
+
+        document.getElementById('selector-maquina').value = informe.maquina;
+        document.getElementById('selector-maquina').disabled = true;
+        
+        cargarDatosMaquina(); 
+
+        document.getElementById('ctrl-fecha').value = informe.fecha.split('T')[0];
+        document.getElementById('ctrl-tecnico').value = informe.inspector || "";
+        document.getElementById('ctrl-supervisor').value = informe.supervisor || "";
+        document.getElementById('ctrl-serie').value = informe.serie || "";
+        document.getElementById('ctrl-ubicacion').value = informe.ubicacion || "";
+        document.getElementById('ctrl-horas-edit').value = informe.horas || 0;
+
+        actualizarNombresFirmas();
+
+        limpiarFirma('tecnico');
+        if(informe.firmaTecnico) {
+            let imgT = new Image();
+            imgT.onload = () => canvases.tecnico.ctx.drawImage(imgT, 0, 0);
+            imgT.src = informe.firmaTecnico;
+        }
+
+        limpiarFirma('supervisor');
+        if(informe.firmaSupervisor) {
+            let imgS = new Image();
+            imgS.onload = () => canvases.supervisor.ctx.drawImage(imgS, 0, 0);
+            imgS.src = informe.firmaSupervisor;
+        }
+
+        document.getElementById('btn-generar').innerText = "Actualizar y Guardar Cambios";
+        document.getElementById('btn-cancelar-edicion').style.display = "inline-block";
+        cambiarPestana('inspeccion');
+        
+        window.scrollTo(0, 0);
+        alert("✏️ Modo Edición Activado. La pauta está bloqueada. Modifique los datos generales o firmas y presione 'Actualizar y Guardar Cambios'.");
+    }
+
+    function cancelarEdicion() {
+        informeEditandoId = null;
+        document.getElementById('btn-generar').innerText = "Generar y Guardar Informe";
+        document.getElementById('btn-cancelar-edicion').style.display = "none";
+        document.getElementById('selector-maquina').disabled = false;
+        cargarDatosMaquina();
+        alert("Edición cancelada.");
+    }
+
+    function abrirModalReparacion(id) {
+        informeParaRepararId = id;
+        let historial = JSON.parse(localStorage.getItem('historial_informes_itpa') || '[]');
+        const informe = historial.find(i => i.id === id);
+        
+        const contenedorList = document.getElementById('lista-pendientes-modal');
+        contenedorList.innerHTML = "";
+
+        let pendientes = informe.tareas.filter(t => t.estadoOriginal !== 'Bueno' && !t.reparado);
+        
+        pendientes.forEach(t => {
+            let claseG = t.estadoOriginal === 'Malo' ? 'rep-item critico' : 'rep-item';
+            contenedorList.innerHTML += `
+                <div class="${claseG}">
+                    <label style="font-weight:bold; display:flex; align-items:center; gap:10px;">
+                        <input type="checkbox" class="check-rep" data-id="${t.id}" style="width:20px; height:20px;">
+                        [${t.estadoOriginal.toUpperCase()}] ${t.nombre}
+                    </label>
+                    <p style="font-size:0.85em; margin:5px 0 10px 0; color:#555;">Falla: ${t.obs}</p>
+                    <input type="text" class="form-control nota-rep" id="nota-rep-${t.id}" placeholder="Describa cómo reparó esta pieza específica...">
+                </div>
+            `;
+        });
+
+        document.getElementById('modal-reparacion').style.display = 'flex';
+    }
+
+    function cerrarModal() {
+        document.getElementById('modal-reparacion').style.display = 'none';
+        informeParaRepararId = null;
+    }
+
+    function guardarReparacionParcial() {
+        let historial = JSON.parse(localStorage.getItem('historial_informes_itpa') || '[]');
+        let index = historial.findIndex(i => i.id === informeParaRepararId);
+        
+        if (index === -1) return;
+
+        let checks = document.querySelectorAll('.check-rep');
+        let algunReparado = false;
+        let ahoraIso = new Date().toISOString();
+
+        checks.forEach(chk => {
+            if (chk.checked) {
+                algunReparado = true;
+                let tareaId = parseInt(chk.getAttribute('data-id'));
+                let nota = document.getElementById(`nota-rep-${tareaId}`).value || "Reparado sin detalles adicionales.";
+                
+                let tarea = historial[index].tareas.find(t => t.id === tareaId);
+                if(tarea) {
+                    tarea.reparado = true;
+                    tarea.fechaReparacion = ahoraIso;
+                    tarea.notaReparacion = nota;
+                }
+            }
+        });
+
+        if (!algunReparado) {
+            alert("No marcó ningún ítem como reparado. Debe seleccionar al menos una casilla.");
+            return;
+        }
+
+        historial[index].estado = calcularEstadoGlobal(historial[index].tareas);
+        localStorage.setItem('historial_informes_itpa', JSON.stringify(historial));
+        
+        cerrarModal();
+        cargarHistorial();
+        alert("✅ Reparaciones guardadas. El informe PDF ha sido actualizado inteligentemente.");
+    }
+
+    function abrirModalRepuestos(id) {
+        informeParaRepuestosId = id; 
+        let historial = JSON.parse(localStorage.getItem('historial_informes_itpa') || '[]');
+        const informe = historial.find(i => i.id === id);
+        if(!informe) return;
+
+        let pendientes = informe.tareas.filter(t => t.estadoOriginal !== 'Bueno' && !t.reparado);
+
+        let mensaje = `Hola equipo de Compras,\n\nTras la inspección técnica, se requiere la adquisición de los siguientes repuestos/servicios:\n\n`;
+        mensaje += `Equipo: ${informe.meta.tipo}\n`;
+        mensaje += `Marca: ${informe.meta.marca}\n`;
+        mensaje += `Modelo: ${informe.meta.modelo}\n`;
+        mensaje += `N° Serie: ${informe.serie || "S/N"}\n\n`;
+        mensaje += `DETALLE DE LO REQUERIDO:\n`;
+        
+        pendientes.forEach(t => {
+            let accionTxt = (t.accion && t.accion.trim() !== "") ? t.accion : "Se requiere revisión/compra de repuesto para este componente.";
+            mensaje += `- Para ${t.nombre}: ${accionTxt}\n`;
+        });
+        
+        mensaje += `\nSaludos cordiales,\n${informe.inspector || "Técnico Responsable"}\n${informe.supervisor || "Supervisor"}`;
+
+        document.getElementById('texto-mensaje-repuestos').value = mensaje;
+        document.getElementById('modal-repuestos').style.display = 'flex';
+    }
+
+    function cerrarModalRepuestos() {
+        document.getElementById('modal-repuestos').style.display = 'none';
+        informeParaRepuestosId = null;
+    }
+
+    function enviarCorreoRepuestos() {
+        let texto = document.getElementById('texto-mensaje-repuestos').value;
+        let subject = encodeURIComponent("Solicitud de Repuestos Mantenimiento");
+        let body = encodeURIComponent(texto);
+        
+        let urlGmail = `https://mail.google.com/mail/?view=cm&fs=1&su=${subject}&body=${body}`;
+        window.open(urlGmail, '_blank');
+    }
+
+    function enviarWhatsAppRepuestos() {
+        let texto = document.getElementById('texto-mensaje-repuestos').value;
+        let url = `https://wa.me/?text=${encodeURIComponent(texto)}`;
+        window.open(url, '_blank');
+    }
+
+    function verReporteAntiguo(id) {
+        let historial = JSON.parse(localStorage.getItem('historial_informes_itpa') || '[]');
+        const informe = historial.find(i => i.id === id);
+        
+        if(informe) {
+            if(informe.tareas) {
+                renderizarPDF(informe);
+            } else {
+                alert("Este es un informe de una versión antigua. Se mostrará en formato estático.");
+                document.getElementById('informe-content-dinamico').innerHTML = informe.htmlReporte;
+                document.getElementById('app-view').style.display = 'none';
+                document.getElementById('informe-view').style.display = 'block';
+                window.scrollTo(0, 0);
+            }
+        }
+    }
+
+    function limpiarHistorial() {
+        if(confirm("¿Estás seguro que deseas borrar todos los informes guardados? Esto no se puede deshacer.")) {
+            localStorage.removeItem('historial_informes_itpa');
+            cargarHistorial();
+        }
+    }
+</script>
+</body>
+</html>
