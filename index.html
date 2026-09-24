@@ -9,8 +9,10 @@
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0056b3">
     
-    <!-- LIBRERÍA PROFESIONAL PARA DESCARGA DIRECTA DE PDF -->
+    <!-- LIBRERÍAS DE DESCARGA PDF Y FIREBASE (LA NUBE) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <style>
         :root {
@@ -109,7 +111,7 @@
 </head>
 <body>
 
-    <div id="app-view">
+    <div id="app-view" style="display: none;">
         <div class="header">
             <h2>📱 Sistema de Gestión de Mantenimiento</h2>
         </div>
@@ -221,7 +223,7 @@
         <!-- Pestaña 3: HISTORIAL -->
         <div id="tab-historial" class="tab-content">
             <div class="card">
-                <h3 style="margin-top:0; color:var(--primary);">Archivos Guardados</h3>
+                <h3 style="margin-top:0; color:var(--primary);">Archivos Guardados (Nube)</h3>
                 <p style="font-size:0.9em; color:#555;">Si un equipo tiene fallas, usa los botones para <strong>Reparar</strong> o <strong>Solicitar Repuestos</strong> a Compras.</p>
                 <div id="lista-historial"></div>
                 <button onclick="limpiarHistorial()" style="width:100%; padding:10px; margin-top:20px; background:#dc3545; color:white; border:none; border-radius:6px; cursor:pointer;">Limpiar Historial Completo</button>
@@ -238,8 +240,8 @@
         <!-- Pestaña 5: CREADOR DE EQUIPOS (CON EDICIÓN) -->
         <div id="tab-creador" class="tab-content">
             <div class="card" style="border-left-color: #ffc107;">
-                <h3 style="margin-top:0; color:#856404;">Gestor de Equipos</h3>
-                <p style="font-size:0.9em; color:#555;">Crea una nueva máquina o edita una existente en el sistema.</p>
+                <h3 style="margin-top:0; color:#856404;">Gestor de Equipos en la Nube</h3>
+                <p style="font-size:0.9em; color:#555;">Crea una nueva máquina o edita una existente en la base de datos corporativa.</p>
 
                 <div style="background:#fff3cd; padding:15px; border-radius:8px; margin-bottom:15px; border: 1px solid #ffeeba;">
                     <h4 style="margin-top:0; color:#856404;">1. Identificación</h4>
@@ -271,7 +273,7 @@
 
                 <div style="display: flex; gap: 10px;">
                     <button id="btn-cancelar-creador" onclick="cancelarEdicionCreador()" style="display:none; flex:1; background:#6c757d; color:white; border:none; padding:15px; border-radius:6px; cursor:pointer; font-size:1.1em; font-weight:bold;">❌ Cancelar</button>
-                    <button id="btn-guardar-creador" onclick="guardarNuevoEquipo()" style="flex:2; background:#28a745; color:white; border:none; padding:15px; border-radius:6px; cursor:pointer; font-size:1.1em; font-weight:bold; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">💾 Guardar Herramienta en la App</button>
+                    <button id="btn-guardar-creador" onclick="guardarNuevoEquipo()" style="flex:2; background:#28a745; color:white; border:none; padding:15px; border-radius:6px; cursor:pointer; font-size:1.1em; font-weight:bold; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">☁️ Guardar en la Nube</button>
                 </div>
             </div>
 
@@ -338,6 +340,21 @@
 
 <script>
     window.informeActualPDFName = 'Informe.pdf';
+
+    // --- CONFIGURACIÓN DE FIREBASE ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyCtQoZsvkDGWhKgYaYmkHJA_7lHsOwW4Z4",
+      authDomain: "app-mantenimiento-mafercal.firebaseapp.com",
+      databaseURL: "https://app-mantenimiento-mafercal-default-rtdb.firebaseio.com", // Añadido automático por seguridad
+      projectId: "app-mantenimiento-mafercal",
+      storageBucket: "app-mantenimiento-mafercal.firebasestorage.app",
+      messagingSenderId: "642023996644",
+      appId: "1:642023996644:web:6644596e3bc99a24d400f1"
+    };
+    
+    // Inicializar Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
 
     // --- BASE DE DATOS DE FÁBRICA (Respaldo) ---
     const bdDeFabrica = {
@@ -506,32 +523,73 @@
         }
     };
 
-    // --- CARGA DINÁMICA DE BASE DE DATOS ---
-    let baseDeDatos = JSON.parse(localStorage.getItem('bd_maquinas_itpa_v2'));
-    if (!baseDeDatos || Object.keys(baseDeDatos).length === 0) {
-        baseDeDatos = JSON.parse(JSON.stringify(bdDeFabrica));
-        localStorage.setItem('bd_maquinas_itpa_v2', JSON.stringify(baseDeDatos));
-    }
-
+    // VARIABLES GLOBALES (Ahora alimentadas por la nube)
+    let baseDeDatos = {};
+    let estadoMaquinas = {};
+    let historialInformes = [];
+    
     let registros = {};
     let maquinaActual = "";
-    
-    let estadoMaquinas = JSON.parse(localStorage.getItem('estado_talleres_maquinas') || '{}');
     let informeEditandoId = null;
     let informeParaRepararId = null;
     let informeParaRepuestosId = null;
 
     let contadorNuevasTareas = 0;
-    let equipoEnEdicion = null; // Variable para saber si estamos editando un equipo en el Creador
+    let equipoEnEdicion = null;
 
     const canvases = {
         tecnico: { el: null, ctx: null, drawing: false },
         supervisor: { el: null, ctx: null, drawing: false }
     };
 
+    // --- INICIALIZACIÓN MÁGICA DE FIREBASE ---
     window.onload = function() {
-        inicializarSelectorMaquinas();
         initCanvases();
+        
+        let loadingMsg = document.createElement('div');
+        loadingMsg.id = 'firebase-loader';
+        loadingMsg.style = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.9); z-index:9999; display:flex; justify-content:center; align-items:center; font-size:1.5em; font-weight:bold; color:#0056b3;';
+        loadingMsg.innerHTML = '☁️ Conectando con la nube Mafercal...';
+        document.body.appendChild(loadingMsg);
+
+        let inicializado = false;
+
+        // Escuchador en Tiempo Real
+        db.ref('/').on('value', (snapshot) => {
+            const data = snapshot.val() || {};
+            
+            baseDeDatos = data.baseDeDatos || JSON.parse(JSON.stringify(bdDeFabrica));
+            estadoMaquinas = data.estadoMaquinas || {};
+            
+            let rawHistorial = data.historialInformes || [];
+            if (!Array.isArray(rawHistorial)) {
+                historialInformes = Object.keys(rawHistorial).map(k => rawHistorial[k]);
+            } else {
+                historialInformes = rawHistorial;
+            }
+            historialInformes.sort((a,b) => b.id - a.id); // Ordenar del más nuevo al más viejo
+
+            if (!inicializado) {
+                // Primera carga
+                inicializado = true;
+                
+                // Si la nube estaba vacía, subimos la info de fábrica para inicializarla
+                if(!data.baseDeDatos) {
+                    db.ref('baseDeDatos').set(baseDeDatos);
+                }
+
+                let loader = document.getElementById('firebase-loader');
+                if(loader) loader.remove();
+                
+                document.getElementById('app-view').style.display = 'block';
+                inicializarSelectorMaquinas();
+            } else {
+                // Actualizaciones en segundo plano por si otro mecánico hace algo
+                if(document.getElementById('btn-historial').classList.contains('active')) cargarHistorial();
+                if(document.getElementById('btn-creador').classList.contains('active')) listarEquiposEnCreador();
+                // NO llamamos a cargarDatosMaquina() para no borrarle lo que el técnico esté escribiendo
+            }
+        });
     };
 
     function inicializarSelectorMaquinas() {
@@ -545,7 +603,9 @@
             selector.appendChild(option);
             
             if (!estadoMaquinas[maq]) {
-                estadoMaquinas[maq] = { horas: 0, fechaUltimoMaint: new Date().toISOString().split('T')[0], serie: baseDeDatos[maq].meta.serie, ubicacion: "" };
+                estadoMaquinas[maq] = { horas: 0, fechaUltimoMaint: new Date().toISOString().split('T')[0], serie: baseDeDatos[maq].meta.serie || "", ubicacion: "" };
+                // Opcional: Subir este estado a la nube si no existía
+                db.ref('estadoMaquinas/' + maq).set(estadoMaquinas[maq]);
             }
         }
         cargarDatosMaquina();
@@ -573,36 +633,19 @@
             const scaleY = cvs.el.height / rect.height;
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            return {
-                x: (clientX - rect.left) * scaleX,
-                y: (clientY - rect.top) * scaleY
-            };
+            return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
         };
 
         const start = (e) => { e.preventDefault(); cvs.drawing = true; const pos = getPos(e); cvs.ctx.beginPath(); cvs.ctx.moveTo(pos.x, pos.y); };
         const draw = (e) => { if (!cvs.drawing) return; e.preventDefault(); const pos = getPos(e); cvs.ctx.lineTo(pos.x, pos.y); cvs.ctx.stroke(); };
         const stop = (e) => { if(!cvs.drawing) return; e.preventDefault(); cvs.drawing = false; cvs.ctx.closePath(); };
 
-        cvs.el.addEventListener('mousedown', start);
-        cvs.el.addEventListener('mousemove', draw);
-        cvs.el.addEventListener('mouseup', stop);
-        cvs.el.addEventListener('mouseout', stop);
-
-        cvs.el.addEventListener('touchstart', start, {passive: false});
-        cvs.el.addEventListener('touchmove', draw, {passive: false});
-        cvs.el.addEventListener('touchend', stop);
+        cvs.el.addEventListener('mousedown', start); cvs.el.addEventListener('mousemove', draw); cvs.el.addEventListener('mouseup', stop); cvs.el.addEventListener('mouseout', stop);
+        cvs.el.addEventListener('touchstart', start, {passive: false}); cvs.el.addEventListener('touchmove', draw, {passive: false}); cvs.el.addEventListener('touchend', stop);
     }
 
-    function limpiarFirma(key) {
-        canvases[key].ctx.clearRect(0, 0, canvases[key].el.width, canvases[key].el.height);
-    }
-
-    function isCanvasEmpty(canvas) {
-        const blank = document.createElement('canvas');
-        blank.width = canvas.width;
-        blank.height = canvas.height;
-        return canvas.toDataURL() === blank.toDataURL();
-    }
+    function limpiarFirma(key) { canvases[key].ctx.clearRect(0, 0, canvases[key].el.width, canvases[key].el.height); }
+    function isCanvasEmpty(canvas) { const blank = document.createElement('canvas'); blank.width = canvas.width; blank.height = canvas.height; return canvas.toDataURL() === blank.toDataURL(); }
 
     document.getElementById('ctrl-fecha').valueAsDate = new Date();
 
@@ -665,8 +708,7 @@
             let accionInicial = '';
 
             if (isEditing) {
-                let hist = JSON.parse(localStorage.getItem('historial_informes_itpa') || '[]');
-                let infAnt = hist.find(i => i.id === informeEditandoId);
+                let infAnt = historialInformes.find(i => i.id === informeEditandoId);
                 if (infAnt && infAnt.tareas) {
                     let tarAnt = infAnt.tareas.find(t => t.id === tarea.id);
                     if (tarAnt) {
@@ -752,7 +794,8 @@
         if(isNaN(add) || add <= 0) return alert("Ingrese un número válido mayor a 0.");
         
         estadoMaquinas[maquinaActual].horas += add;
-        localStorage.setItem('estado_talleres_maquinas', JSON.stringify(estadoMaquinas));
+        db.ref('estadoMaquinas').set(estadoMaquinas); // Subir a nube
+        
         document.getElementById('input-sumar-horas').value = "";
         actualizarHorometro(estadoMaquinas[maquinaActual]);
         
@@ -834,7 +877,7 @@
             contenedor.appendChild(div);
         });
         
-        document.getElementById('btn-guardar-creador').innerText = "🔄 Actualizar Herramienta";
+        document.getElementById('btn-guardar-creador').innerText = "🔄 Actualizar en la Nube";
         document.getElementById('btn-cancelar-creador').style.display = "block";
         window.scrollTo(0, 0);
     }
@@ -850,7 +893,7 @@
         document.getElementById('nuevo-eq-instrucciones').value = "";
         contadorNuevasTareas = 0;
         
-        document.getElementById('btn-guardar-creador').innerText = "💾 Guardar Herramienta en la App";
+        document.getElementById('btn-guardar-creador').innerText = "☁️ Guardar en la Nube";
         document.getElementById('btn-cancelar-creador').style.display = "none";
     }
 
@@ -895,9 +938,10 @@
             instrucciones: instruccionesArray
         };
 
-        localStorage.setItem('bd_maquinas_itpa_v2', JSON.stringify(baseDeDatos));
+        // SUBIR A FIREBASE
+        db.ref('baseDeDatos').set(baseDeDatos);
         
-        alert(`✅ Equipo "${idNombre}" guardado exitosamente en el menú principal.`);
+        alert(`✅ Equipo "${idNombre}" guardado exitosamente en la nube.`);
         
         cancelarEdicionCreador();
         inicializarSelectorMaquinas();
@@ -921,22 +965,24 @@
     }
 
     function borrarEquipo(nombre) {
-        if(confirm(`¿Estás seguro de eliminar "${nombre}" del sistema? (Esto no borra los historiales antiguos en PDF)`)) {
+        if(confirm(`¿Estás seguro de eliminar "${nombre}" de la nube de la empresa?`)) {
             delete baseDeDatos[nombre];
-            localStorage.setItem('bd_maquinas_itpa_v2', JSON.stringify(baseDeDatos));
+            db.ref('baseDeDatos').set(baseDeDatos);
             inicializarSelectorMaquinas();
             listarEquiposEnCreador();
         }
     }
 
     function restaurarBaseOriginal() {
-        if(confirm("⚠️ ¿Estás seguro? Esto borrará todos los equipos creados manualmente y restaurará las máquinas de fábrica.")) {
-            localStorage.removeItem('bd_maquinas_itpa_v2');
-            location.reload(); 
+        if(confirm("⚠️ ¿Estás seguro? Esto borrará todos los equipos creados en la nube y restaurará las máquinas de fábrica para todos los usuarios.")) {
+            db.ref('baseDeDatos').set(JSON.parse(JSON.stringify(bdDeFabrica))).then(() => {
+                alert("Base de datos restaurada.");
+                location.reload(); 
+            });
         }
     }
 
-    // --- FUNCIONES DE DESCARGA PDF LOCAL (SIN NUBE) ---
+    // --- FUNCIONES DE DESCARGA PDF LOCAL ---
     function descargarPDFDirecto(seccionId, nombreArchivo) {
         if (typeof html2pdf === 'undefined') {
             alert("No se pudo cargar el motor de PDF.");
@@ -1017,8 +1063,7 @@
             let estadoOriginalGuardado = data.estado; 
 
             if(informeEditandoId) {
-                let hist = JSON.parse(localStorage.getItem('historial_informes_itpa') || '[]');
-                let infAnt = hist.find(i => i.id === informeEditandoId);
+                let infAnt = historialInformes.find(i => i.id === informeEditandoId);
                 if(infAnt) {
                     let tarAnt = infAnt.tareas.find(t => t.id === tarea.id);
                     if(tarAnt) {
@@ -1049,8 +1094,7 @@
         let firmaSup = isCanvasEmpty(canvases.supervisor.el) ? null : canvases.supervisor.el.toDataURL();
         
         if(informeEditandoId) {
-            let hist = JSON.parse(localStorage.getItem('historial_informes_itpa') || '[]');
-            let infAntiguo = hist.find(i => i.id === informeEditandoId);
+            let infAntiguo = historialInformes.find(i => i.id === informeEditandoId);
             if(infAntiguo) {
                 if(!firmaTec && infAntiguo.firmaTecnico) firmaTec = infAntiguo.firmaTecnico;
                 if(!firmaSup && infAntiguo.firmaSupervisor) firmaSup = infAntiguo.firmaSupervisor;
@@ -1074,19 +1118,20 @@
 
         informeData.estado = calcularEstadoGlobal(tareasReporte);
 
-        let historial = JSON.parse(localStorage.getItem('historial_informes_itpa') || '[]');
         if (informeEditandoId) {
-            let index = historial.findIndex(i => i.id === informeEditandoId);
-            if(index !== -1) historial[index] = informeData;
+            let index = historialInformes.findIndex(i => i.id === informeEditandoId);
+            if(index !== -1) historialInformes[index] = informeData;
         } else {
-            historial.unshift(informeData);
+            historialInformes.unshift(informeData);
         }
-        localStorage.setItem('historial_informes_itpa', JSON.stringify(historial));
+        
+        // GUARDAR EN FIREBASE
+        db.ref('historialInformes').set(historialInformes);
 
         if(!informeEditandoId) {
             estadoMaquinas[maquinaActual].horas = 0;
             estadoMaquinas[maquinaActual].fechaUltimoMaint = fechaBase.toISOString().split('T')[0];
-            localStorage.setItem('estado_talleres_maquinas', JSON.stringify(estadoMaquinas));
+            db.ref('estadoMaquinas').set(estadoMaquinas);
         }
 
         informeEditandoId = null;
@@ -1094,7 +1139,7 @@
         document.getElementById('btn-cancelar-edicion').style.display = "none";
         document.getElementById('selector-maquina').disabled = false;
 
-        alert("✅ Informe y Checklist guardados localmente con éxito.");
+        alert("✅ Informe y Checklist guardados exitosamente en la nube corporativa.");
         renderizarPDF(informeData);
     }
 
@@ -1178,7 +1223,7 @@
                 <p style="margin: 5px 0 0 0; font-size: 0.95em;"><strong>Trabajos ejecutados:</strong><br> ${detalles}</p>
             </div>`;
         }
-        
+
         let resumenPendientesHTML = "";
         if (criticosNoReparados.length > 0 || menoresNoReparados.length > 0) {
             resumenPendientesHTML = `<div style="margin-top: 15px; padding: 15px; border: 2px solid #dc3545; background-color: #f8d7da; border-radius: 8px;">
@@ -1367,15 +1412,14 @@
 
     function cargarHistorial() {
         const contenedor = document.getElementById('lista-historial');
-        let historial = JSON.parse(localStorage.getItem('historial_informes_itpa') || '[]');
         
-        if(historial.length === 0) {
-            contenedor.innerHTML = "<p>No hay informes guardados todavía.</p>";
+        if(historialInformes.length === 0) {
+            contenedor.innerHTML = "<p>No hay informes guardados todavía en la nube.</p>";
             return;
         }
 
         contenedor.innerHTML = "";
-        historial.forEach((informe) => {
+        historialInformes.forEach((informe) => {
             const div = document.createElement('div');
             div.className = "historial-item";
             
@@ -1416,17 +1460,15 @@
     }
 
     function eliminarReporte(id) {
-        if(confirm("¿Estás seguro que deseas eliminar este informe permanentemente?")) {
-            let historial = JSON.parse(localStorage.getItem('historial_informes_itpa') || '[]');
-            historial = historial.filter(i => i.id !== id);
-            localStorage.setItem('historial_informes_itpa', JSON.stringify(historial));
+        if(confirm("¿Estás seguro que deseas eliminar este informe de la nube permanentemente?")) {
+            historialInformes = historialInformes.filter(i => i.id !== id);
+            db.ref('historialInformes').set(historialInformes); // Sincroniza la eliminación
             cargarHistorial();
         }
     }
 
     function editarReporte(id) {
-        let historial = JSON.parse(localStorage.getItem('historial_informes_itpa') || '[]');
-        const informe = historial.find(i => i.id === id);
+        const informe = historialInformes.find(i => i.id === id);
         
         if(!informe || !informe.tareas) {
             alert("Este informe es de una versión antigua de la aplicación y no soporta edición interactiva. Solo puede borrarse.");
@@ -1482,8 +1524,7 @@
 
     function abrirModalReparacion(id) {
         informeParaRepararId = id;
-        let historial = JSON.parse(localStorage.getItem('historial_informes_itpa') || '[]');
-        const informe = historial.find(i => i.id === id);
+        const informe = historialInformes.find(i => i.id === id);
         
         const contenedorList = document.getElementById('lista-pendientes-modal');
         contenedorList.innerHTML = "";
@@ -1493,7 +1534,6 @@
         pendientes.forEach(t => {
             let claseG = t.estadoOriginal === 'Malo' ? 'rep-item critico' : 'rep-item';
             
-            // LA CORRECCIÓN: CASILLAS AISLADAS PARA NO ARRASTRAR LA REPARACIÓN
             contenedorList.innerHTML += `
                 <div class="${claseG}">
                     <label style="font-weight:bold; display:block; margin-bottom:5px; cursor:pointer;">
@@ -1515,8 +1555,7 @@
     }
 
     function guardarReparacionParcial() {
-        let historial = JSON.parse(localStorage.getItem('historial_informes_itpa') || '[]');
-        let index = historial.findIndex(i => i.id === informeParaRepararId);
+        let index = historialInformes.findIndex(i => i.id === informeParaRepararId);
         
         if (index === -1) return;
 
@@ -1526,10 +1565,9 @@
 
         checks.forEach(chk => {
             let tareaId = parseInt(chk.getAttribute('data-id'));
-            let tarea = historial[index].tareas.find(t => t.id === tareaId);
+            let tarea = historialInformes[index].tareas.find(t => t.id === tareaId);
             
             if (tarea) {
-                // LA CORRECCIÓN: SOLO EVALÚA Y CAMBIA LA CASILLA QUE ESTÁ MARCADA
                 if (chk.checked) {
                     reparadasAhorita++;
                     let notaInput = document.getElementById(`nota-rep-${tareaId}`);
@@ -1548,25 +1586,23 @@
             return;
         }
 
-        historial[index].estado = calcularEstadoGlobal(historial[index].tareas);
-        localStorage.setItem('historial_informes_itpa', JSON.stringify(historial));
+        historialInformes[index].estado = calcularEstadoGlobal(historialInformes[index].tareas);
+        db.ref('historialInformes').set(historialInformes); // Guardar en la nube
         
         cerrarModal();
         cargarHistorial();
-        alert(`✅ Se registraron exitosamente ${reparadasAhorita} reparación(es). El PDF ha sido actualizado.`);
+        alert(`✅ Se registraron exitosamente ${reparadasAhorita} reparación(es). El PDF ha sido actualizado en la nube.`);
     }
 
-    // --- CORRECCIÓN: RETRASO EN LA GENERACIÓN DEL PDF DE REPUESTOS ---
+    // --- DESCARGA PDF CON RETRASO ---
     function descargarPDFDesdeModal() {
         if(!informeParaRepuestosId) return; 
-        let historial = JSON.parse(localStorage.getItem('historial_informes_itpa') || '[]');
-        const informe = historial.find(i => i.id === informeParaRepuestosId);
+        const informe = historialInformes.find(i => i.id === informeParaRepuestosId);
         if(!informe) return;
 
         document.getElementById('modal-repuestos').style.display = 'none';
         renderizarPDF(informe);
         
-        // Retraso crucial de 800ms para que el navegador alcance a dibujar el contenido antes de sacar la foto PDF
         setTimeout(() => {
             descargarPDFDirecto('informe-content-dinamico', `Solicitud_Repuestos_${informe.meta.codigo}.pdf`);
         }, 800);
@@ -1574,8 +1610,7 @@
 
     function abrirModalRepuestos(id) {
         informeParaRepuestosId = id; 
-        let historial = JSON.parse(localStorage.getItem('historial_informes_itpa') || '[]');
-        const informe = historial.find(i => i.id === id);
+        const informe = historialInformes.find(i => i.id === id);
         if(!informe) return;
 
         let pendientes = informe.tareas.filter(t => t.estadoOriginal !== 'Bueno' && !t.reparado);
@@ -1619,8 +1654,7 @@
     }
 
     function verReporteAntiguo(id) {
-        let historial = JSON.parse(localStorage.getItem('historial_informes_itpa') || '[]');
-        const informe = historial.find(i => i.id === id);
+        const informe = historialInformes.find(i => i.id === id);
         
         if(informe) {
             if(informe.tareas) {
@@ -1636,8 +1670,9 @@
     }
 
     function limpiarHistorial() {
-        if(confirm("¿Estás seguro que deseas borrar todos los informes guardados? Esto no se puede deshacer.")) {
-            localStorage.removeItem('historial_informes_itpa');
+        if(confirm("¿Estás seguro que deseas borrar todos los informes de la NUBE? Esto no se puede deshacer.")) {
+            historialInformes = [];
+            db.ref('historialInformes').set(historialInformes);
             cargarHistorial();
         }
     }
