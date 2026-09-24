@@ -28,10 +28,10 @@
         h2 { margin: 0 0 10px 0; color: #2c3e50; font-size: 1.3em; }
         .input-group { margin-bottom: 10px; text-align: left; }
         .input-group label { display: block; font-weight: bold; margin-bottom: 5px; color: #555; font-size: 0.9em; }
-        select, .form-control { width: 100%; padding: 10px; font-size: 1em; border-radius: 6px; border: 1px solid #ccc; box-sizing: border-box; background: #fff; font-family: inherit; }
+        select, .form-control, textarea { width: 100%; padding: 10px; font-size: 1em; border-radius: 6px; border: 1px solid #ccc; box-sizing: border-box; background: #fff; font-family: inherit; }
         
         .tabs { display: flex; border-bottom: 3px solid var(--primary); margin-bottom: 15px; background: white; border-radius: 8px 8px 0 0; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.05); flex-wrap: wrap; }
-        .tab-btn { flex: 1 1 20%; min-width: 80px; padding: 10px 2px; cursor: pointer; text-align: center; font-weight: bold; background: #e9ecef; border: none; font-size: 0.8em; color: #555; transition: 0.3s; }
+        .tab-btn { flex: 1 1 18%; min-width: 60px; padding: 10px 2px; cursor: pointer; text-align: center; font-weight: bold; background: #e9ecef; border: none; font-size: 0.75em; color: #555; transition: 0.3s; }
         .tab-btn.active { background: var(--primary); color: white; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
@@ -118,7 +118,8 @@
             <button class="tab-btn active" onclick="cambiarPestana('inspeccion')" id="btn-inspeccion">📝 Inspección</button>
             <button class="tab-btn" onclick="cambiarPestana('horometro')" id="btn-horometro">⏱️ Horómetro</button>
             <button class="tab-btn" onclick="cambiarPestana('historial')" id="btn-historial">📂 Historial</button>
-            <button class="tab-btn" onclick="cambiarPestana('instrucciones')" id="btn-instrucciones">📖 Instrucciones</button>
+            <button class="tab-btn" onclick="cambiarPestana('instrucciones')" id="btn-instrucciones">📖 Manual</button>
+            <button class="tab-btn" onclick="cambiarPestana('creador')" id="btn-creador">⚙️ Creador</button>
         </div>
         
         <div class="input-group" id="selector-container">
@@ -229,15 +230,65 @@
 
         <!-- Pestaña 4: INSTRUCCIONES -->
         <div id="tab-instrucciones" class="tab-content">
-            <div id="lista-instrucciones"></div>
+            <div class="card">
+                <div id="lista-instrucciones"></div>
+            </div>
         </div>
+
+        <!-- Pestaña 5: CREADOR DE EQUIPOS (CON EDICIÓN) -->
+        <div id="tab-creador" class="tab-content">
+            <div class="card" style="border-left-color: #ffc107;">
+                <h3 style="margin-top:0; color:#856404;">Gestor de Equipos</h3>
+                <p style="font-size:0.9em; color:#555;">Crea una nueva máquina o edita una existente en el sistema.</p>
+
+                <div style="background:#fff3cd; padding:15px; border-radius:8px; margin-bottom:15px; border: 1px solid #ffeeba;">
+                    <h4 style="margin-top:0; color:#856404;">1. Identificación</h4>
+                    <div class="input-group">
+                        <label>Nombre del Equipo en el Menú Principal:</label>
+                        <input type="text" id="nuevo-eq-id" class="form-control" placeholder="Ej: SIERRA CIRCULAR MAKITA">
+                    </div>
+                    <div style="display:flex; gap:10px;">
+                        <div class="input-group" style="flex:1;"><label>Código / Tag:</label><input type="text" id="nuevo-eq-codigo" class="form-control" placeholder="Ej: EQ-01"></div>
+                        <div class="input-group" style="flex:1;"><label>Marca:</label><input type="text" id="nuevo-eq-marca" class="form-control" placeholder="Ej: Makita"></div>
+                    </div>
+                    <div style="display:flex; gap:10px;">
+                        <div class="input-group" style="flex:1;"><label>Modelo:</label><input type="text" id="nuevo-eq-modelo" class="form-control" placeholder="Ej: 5007N"></div>
+                        <div class="input-group" style="flex:1;"><label>Potencia:</label><input type="text" id="nuevo-eq-potencia" class="form-control" placeholder="Ej: 1800 W"></div>
+                    </div>
+                </div>
+
+                <div style="background:#e9f2fb; padding:15px; border-radius:8px; margin-bottom:15px; border: 1px solid #b8daff;">
+                    <h4 style="margin-top:0; color:#0056b3;">2. Pauta de Inspección (Checklist)</h4>
+                    <div id="contenedor-nuevas-tareas"></div>
+                    <button onclick="agregarFilaTarea()" style="width:100%; background:#0056b3; color:white; border:none; padding:10px; border-radius:4px; cursor:pointer; font-weight:bold; margin-bottom:10px;">+ Añadir Punto a Revisar</button>
+                </div>
+
+                <div style="background:#f8f9fa; padding:15px; border-radius:8px; margin-bottom:15px; border: 1px solid #ccc;">
+                    <h4 style="margin-top:0; color:#333;">3. Manual Técnico e Instrucciones</h4>
+                    <p style="font-size:0.85em; color:#666; margin-top:0;">Pega aquí las instrucciones o advertencias del manual. Sepáralas presionando "Enter".</p>
+                    <textarea id="nuevo-eq-instrucciones" class="form-control" style="height:120px;" placeholder="1. MANTENIMIENTO&#10;• Limpiar el equipo después de cada uso.&#10;2. SEGURIDAD&#10;• Usar protección ocular en todo momento."></textarea>
+                </div>
+
+                <div style="display: flex; gap: 10px;">
+                    <button id="btn-cancelar-creador" onclick="cancelarEdicionCreador()" style="display:none; flex:1; background:#6c757d; color:white; border:none; padding:15px; border-radius:6px; cursor:pointer; font-size:1.1em; font-weight:bold;">❌ Cancelar</button>
+                    <button id="btn-guardar-creador" onclick="guardarNuevoEquipo()" style="flex:2; background:#28a745; color:white; border:none; padding:15px; border-radius:6px; cursor:pointer; font-size:1.1em; font-weight:bold; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">💾 Guardar Herramienta en la App</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3 style="margin-top:0;">Equipos Existentes en el Sistema</h3>
+                <div id="lista-equipos-sistema"></div>
+                <button onclick="restaurarBaseOriginal()" style="width:100%; padding:10px; margin-top:20px; background:#6c757d; color:white; border:none; border-radius:6px; cursor:pointer;">Restaurar Máquinas por Defecto (Fábrica)</button>
+            </div>
+        </div>
+
     </div>
 
     <!-- MODAL DE REPARACIÓN INDIVIDUAL -->
     <div id="modal-reparacion" class="modal-overlay">
         <div class="modal-content">
             <h3 style="margin-top:0; color:var(--primary);">🔧 Levantamiento de Fallas</h3>
-            <p style="font-size:0.9em; color:#555;">Seleccione <strong>sólo los ítems que ha reparado hoy</strong> y agregue una nota descriptiva de la acción realizada.</p>
+            <p style="font-size:0.9em; color:#555;">Marque <strong>sólo las casillas que realmente reparó</strong> hoy.</p>
             
             <div id="lista-pendientes-modal"></div>
             
@@ -259,7 +310,7 @@
                 <strong>2.</strong> Luego presiona "📧 Por Gmail" y adjunta el archivo guardado al correo.
             </div>
 
-            <!-- BOTÓN QUE LLAMA A LA FUNCIÓN DE DESCARGA DIRECTA -->
+            <!-- BOTÓN DE DESCARGA DESDE EL MODAL -->
             <button onclick="descargarPDFDesdeModal()" style="width:100%; padding:10px; background:#6c757d; color:white; border:none; border-radius:4px; font-weight:bold; margin-bottom:15px; cursor:pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">📥 1. Descargar Documento Completo PDF</button>
             
             <p style="font-size:0.9em; color:#555; margin-top: 0; margin-bottom: 5px; font-weight: bold;">Texto automático generado para Compras:</p>
@@ -275,13 +326,10 @@
 
     <!-- VISTA FINAL DE REPORTES GENERADOS -->
     <div id="informe-view">
-        
-        <!-- BOTONES DE DESCARGA DIRECTA -->
         <div id="informe-botones" class="no-print" style="display:flex; gap:10px; margin-bottom: 20px; flex-wrap: wrap; background: #e9f2fb; padding: 15px; border-radius: 8px;">
-            <p style="width: 100%; margin: 0 0 10px 0; font-weight: bold; color: #0056b3;">✅ Documentos listos. Haz clic para descargar el archivo PDF directo:</p>
-            <button class="btn-exportar" onclick="descargarPDFDirecto('informe-content-dinamico', 'Informe_Completo.pdf')" style="margin-top:0; flex:1; min-width: 200px; background: #6c757d;">🖨️ Descargar Documento Completo</button>
-            <button class="btn-exportar" onclick="descargarPDFDirecto('informe-ejecutivo', 'Informe_Ejecutivo.pdf')" style="margin-top:0; flex:1; min-width: 200px; background: #0056b3;">🖨️ Descargar Solo Informe</button>
-            <button class="btn-exportar" onclick="descargarPDFDirecto('anexo-checklist', 'Checklist_Pauta.pdf')" style="margin-top:0; flex:1; min-width: 200px; background: #28a745;">🖨️ Descargar Solo Pauta</button>
+            <p style="width: 100%; margin: 0 0 10px 0; font-weight: bold; color: #0056b3;">✅ Documentos listos. Haz clic para descargar el archivo en tu dispositivo:</p>
+            
+            <button class="btn-exportar" onclick="descargarPDFDirecto('informe-content-dinamico', window.informeActualPDFName || 'Informe_Completo.pdf')" style="margin-top:0; flex:1; min-width: 200px; background: #6c757d;">🖨️ Descargar Documento (PC/Móvil)</button>
             <button class="btn-exportar" style="background: #333; margin-top:0; flex:1; min-width: 200px;" onclick="location.reload()">🔄 Volver al Sistema</button>
         </div>
 
@@ -289,8 +337,10 @@
     </div>
 
 <script>
-    // --- BASE DE DATOS EXACTA AL 100% ---
-    const baseDeDatos = {
+    window.informeActualPDFName = 'Informe.pdf';
+
+    // --- BASE DE DATOS DE FÁBRICA (Respaldo) ---
+    const bdDeFabrica = {
         "TRONZADORA DE METAL BOSCH GCO 14-24 J PROFESSIONAL": {
             "meta": { "tipo": "Tronzadora de metal", "codigo": "EQ-BOSCH-GCO1424J-01", "marca": "BOSCH", "modelo": "GCO 14-24 J Professional", "potencia": "2400 W", "serie": "BS-938201-2026", "tension": "230 V / 50-60 Hz", "diametro": "14\" (355 mm) / Eje 25.4 mm", "velocidad": "3800 RPM" },
             "pauta": [
@@ -456,20 +506,50 @@
         }
     };
 
+    // --- CARGA DINÁMICA DE BASE DE DATOS ---
+    let baseDeDatos = JSON.parse(localStorage.getItem('bd_maquinas_itpa_v2'));
+    if (!baseDeDatos || Object.keys(baseDeDatos).length === 0) {
+        baseDeDatos = JSON.parse(JSON.stringify(bdDeFabrica));
+        localStorage.setItem('bd_maquinas_itpa_v2', JSON.stringify(baseDeDatos));
+    }
+
     let registros = {};
     let maquinaActual = "";
     
-    // Variables de estado
     let estadoMaquinas = JSON.parse(localStorage.getItem('estado_talleres_maquinas') || '{}');
     let informeEditandoId = null;
     let informeParaRepararId = null;
     let informeParaRepuestosId = null;
 
-    // FIRMAS LÓGICA
+    let contadorNuevasTareas = 0;
+    let equipoEnEdicion = null; // Variable para saber si estamos editando un equipo en el Creador
+
     const canvases = {
         tecnico: { el: null, ctx: null, drawing: false },
         supervisor: { el: null, ctx: null, drawing: false }
     };
+
+    window.onload = function() {
+        inicializarSelectorMaquinas();
+        initCanvases();
+    };
+
+    function inicializarSelectorMaquinas() {
+        const selector = document.getElementById('selector-maquina');
+        selector.innerHTML = "";
+        
+        for (const maq in baseDeDatos) {
+            const option = document.createElement('option');
+            option.value = maq;
+            option.innerText = maq;
+            selector.appendChild(option);
+            
+            if (!estadoMaquinas[maq]) {
+                estadoMaquinas[maq] = { horas: 0, fechaUltimoMaint: new Date().toISOString().split('T')[0], serie: baseDeDatos[maq].meta.serie, ubicacion: "" };
+            }
+        }
+        cargarDatosMaquina();
+    }
 
     function initCanvases() {
         canvases.tecnico.el = document.getElementById('canvas-tecnico');
@@ -524,24 +604,7 @@
         return canvas.toDataURL() === blank.toDataURL();
     }
 
-    const selector = document.getElementById('selector-maquina');
-    for (const maq in baseDeDatos) {
-        const option = document.createElement('option');
-        option.value = maq;
-        option.innerText = maq;
-        selector.appendChild(option);
-        
-        if (!estadoMaquinas[maq]) {
-            estadoMaquinas[maq] = { horas: 0, fechaUltimoMaint: new Date().toISOString().split('T')[0], serie: baseDeDatos[maq].meta.serie, ubicacion: "" };
-        }
-    }
-
     document.getElementById('ctrl-fecha').valueAsDate = new Date();
-
-    window.onload = function() {
-        cargarDatosMaquina();
-        initCanvases();
-    };
 
     function cambiarPestana(id) {
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
@@ -549,10 +612,11 @@
         document.getElementById(`btn-${id}`).classList.add('active');
         document.getElementById(`tab-${id}`).classList.add('active');
         
-        document.getElementById('selector-container').style.display = (id === 'historial' || id === 'instrucciones') ? 'none' : 'block';
+        document.getElementById('selector-container').style.display = (id === 'historial' || id === 'instrucciones' || id === 'creador') ? 'none' : 'block';
         document.getElementById('btn-generar').style.display = (id === 'inspeccion') ? 'block' : 'none';
 
         if(id === 'historial') cargarHistorial();
+        if(id === 'creador') listarEquiposEnCreador();
     }
 
     function actualizarNombresFirmas() {
@@ -563,7 +627,10 @@
     }
 
     function cargarDatosMaquina() {
+        const selector = document.getElementById('selector-maquina');
+        if(!selector.value) return;
         maquinaActual = selector.value;
+
         const datos = baseDeDatos[maquinaActual];
         const estado = estadoMaquinas[maquinaActual];
         
@@ -714,17 +781,170 @@
         }
     }
 
-    // --- NUEVO: FUNCIÓN PARA DESCARGAR PDF DIRECTO (html2pdf) ---
+    // --- SECCIÓN CREADOR DE EQUIPOS DINÁMICO ---
+    function agregarFilaTarea() {
+        contadorNuevasTareas++;
+        const div = document.createElement('div');
+        div.className = 'nueva-tarea-item';
+        div.style.cssText = "background:#fff; padding:10px; border:1px solid #ccc; margin-bottom:5px; border-radius:4px; border-left: 4px solid #0056b3;";
+        div.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                <strong style="color:#0056b3;">Punto de Pauta #${contadorNuevasTareas}</strong>
+                <button onclick="this.parentElement.parentElement.remove()" style="background:#dc3545; color:white; border:none; border-radius:4px; cursor:pointer; font-size:0.8em; padding:4px 8px;">X Quitar</button>
+            </div>
+            <input type="text" class="form-control t-nombre" placeholder="Nombre (Ej: Botón de Encendido)" style="margin-bottom:5px;">
+            <input type="text" class="form-control t-desc" placeholder="Instrucción de revisión (Ej: Verificar que no se atasque...)" style="margin-bottom:5px;">
+            <input type="text" class="form-control t-frec" placeholder="Frecuencia (Opcional, Ej: 40 hrs)" value="40 h / 3 meses">
+        `;
+        document.getElementById('contenedor-nuevas-tareas').appendChild(div);
+    }
+
+    function editarEquipoCreador(nombreOriginal) {
+        const eq = baseDeDatos[nombreOriginal];
+        if(!eq) return;
+
+        equipoEnEdicion = nombreOriginal; 
+        
+        document.getElementById('nuevo-eq-id').value = nombreOriginal;
+        document.getElementById('nuevo-eq-codigo').value = eq.meta.codigo || "";
+        document.getElementById('nuevo-eq-marca').value = eq.meta.marca || "";
+        document.getElementById('nuevo-eq-modelo').value = eq.meta.modelo || "";
+        document.getElementById('nuevo-eq-potencia').value = eq.meta.potencia || "";
+        
+        document.getElementById('nuevo-eq-instrucciones').value = (eq.instrucciones || []).join('\n');
+        
+        const contenedor = document.getElementById('contenedor-nuevas-tareas');
+        contenedor.innerHTML = "";
+        contadorNuevasTareas = 0;
+        
+        eq.pauta.forEach(tarea => {
+            contadorNuevasTareas++;
+            const div = document.createElement('div');
+            div.className = 'nueva-tarea-item';
+            div.style.cssText = "background:#fff; padding:10px; border:1px solid #ccc; margin-bottom:5px; border-radius:4px; border-left: 4px solid #0056b3;";
+            div.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                    <strong style="color:#0056b3;">Punto de Pauta #${contadorNuevasTareas}</strong>
+                    <button onclick="this.parentElement.parentElement.remove()" style="background:#dc3545; color:white; border:none; border-radius:4px; cursor:pointer; font-size:0.8em; padding:4px 8px;">X Quitar</button>
+                </div>
+                <input type="text" class="form-control t-nombre" placeholder="Nombre (Ej: Botón de Encendido)" value="${tarea.nombre}" style="margin-bottom:5px;">
+                <input type="text" class="form-control t-desc" placeholder="Instrucción de revisión" value="${tarea.desc}" style="margin-bottom:5px;">
+                <input type="text" class="form-control t-frec" placeholder="Frecuencia" value="${tarea.frecuencia}">
+            `;
+            contenedor.appendChild(div);
+        });
+        
+        document.getElementById('btn-guardar-creador').innerText = "🔄 Actualizar Herramienta";
+        document.getElementById('btn-cancelar-creador').style.display = "block";
+        window.scrollTo(0, 0);
+    }
+
+    function cancelarEdicionCreador() {
+        equipoEnEdicion = null;
+        document.getElementById('nuevo-eq-id').value = "";
+        document.getElementById('nuevo-eq-codigo').value = "";
+        document.getElementById('nuevo-eq-marca').value = "";
+        document.getElementById('nuevo-eq-modelo').value = "";
+        document.getElementById('nuevo-eq-potencia').value = "";
+        document.getElementById('contenedor-nuevas-tareas').innerHTML = "";
+        document.getElementById('nuevo-eq-instrucciones').value = "";
+        contadorNuevasTareas = 0;
+        
+        document.getElementById('btn-guardar-creador').innerText = "💾 Guardar Herramienta en la App";
+        document.getElementById('btn-cancelar-creador').style.display = "none";
+    }
+
+    function guardarNuevoEquipo() {
+        let idNombre = document.getElementById('nuevo-eq-id').value.trim().toUpperCase();
+        if(!idNombre) return alert("Debe ingresar el Nombre Principal de la máquina.");
+
+        if(equipoEnEdicion && equipoEnEdicion !== idNombre) {
+            delete baseDeDatos[equipoEnEdicion]; // Si le cambiaron el nombre, borramos el original
+        }
+
+        let meta = {
+            tipo: "Herramienta Agregada",
+            codigo: document.getElementById('nuevo-eq-codigo').value || "S/N",
+            marca: document.getElementById('nuevo-eq-marca').value || "-",
+            modelo: document.getElementById('nuevo-eq-modelo').value || "-",
+            potencia: document.getElementById('nuevo-eq-potencia').value || "-",
+            serie: "", tension: "", diametro: "", velocidad: ""
+        };
+
+        let pauta = [];
+        let items = document.querySelectorAll('.nueva-tarea-item');
+        let index = 1;
+        
+        items.forEach(item => {
+            let n = item.querySelector('.t-nombre').value.trim();
+            let d = item.querySelector('.t-desc').value.trim();
+            let f = item.querySelector('.t-frec').value.trim();
+            if(n) { pauta.push({ id: index++, nombre: n, desc: d || "Inspección visual y funcional.", frecuencia: f }); }
+        });
+
+        if(pauta.length === 0) return alert("Debe añadir al menos un (1) Punto a Revisar en la pauta.");
+
+        let instTexto = document.getElementById('nuevo-eq-instrucciones').value.trim();
+        let instruccionesArray = instTexto 
+            ? instTexto.split('\n').filter(l => l.trim() !== '') 
+            : ["1. MANTENIMIENTO", "• Seguir directrices generales de seguridad.", "• Usar EPP correspondiente."];
+
+        baseDeDatos[idNombre] = {
+            meta: meta,
+            pauta: pauta,
+            instrucciones: instruccionesArray
+        };
+
+        localStorage.setItem('bd_maquinas_itpa_v2', JSON.stringify(baseDeDatos));
+        
+        alert(`✅ Equipo "${idNombre}" guardado exitosamente en el menú principal.`);
+        
+        cancelarEdicionCreador();
+        inicializarSelectorMaquinas();
+        listarEquiposEnCreador();
+    }
+
+    function listarEquiposEnCreador() {
+        const contenedor = document.getElementById('lista-equipos-sistema');
+        contenedor.innerHTML = "";
+        for (const maq in baseDeDatos) {
+            contenedor.innerHTML += `
+                <div style="display:flex; justify-content:space-between; align-items:center; background:white; padding:10px; border-radius:4px; border:1px solid #ddd; margin-bottom:5px;">
+                    <strong style="flex:1;">${maq}</strong>
+                    <div style="display:flex; gap:5px;">
+                        <button onclick="editarEquipoCreador('${maq}')" style="background:#ffc107; color:#212529; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; font-weight:bold;">✏️ Editar</button>
+                        <button onclick="borrarEquipo('${maq}')" style="background:#dc3545; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; font-weight:bold;">🗑️ Borrar</button>
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    function borrarEquipo(nombre) {
+        if(confirm(`¿Estás seguro de eliminar "${nombre}" del sistema? (Esto no borra los historiales antiguos en PDF)`)) {
+            delete baseDeDatos[nombre];
+            localStorage.setItem('bd_maquinas_itpa_v2', JSON.stringify(baseDeDatos));
+            inicializarSelectorMaquinas();
+            listarEquiposEnCreador();
+        }
+    }
+
+    function restaurarBaseOriginal() {
+        if(confirm("⚠️ ¿Estás seguro? Esto borrará todos los equipos creados manualmente y restaurará las máquinas de fábrica.")) {
+            localStorage.removeItem('bd_maquinas_itpa_v2');
+            location.reload(); 
+        }
+    }
+
+    // --- FUNCIONES DE DESCARGA PDF LOCAL (SIN NUBE) ---
     function descargarPDFDirecto(seccionId, nombreArchivo) {
         if (typeof html2pdf === 'undefined') {
-            alert("No se pudo cargar el motor de PDF (se requiere internet para la descarga directa). Se abrirá la impresión estándar.");
-            imprimirSeccion(seccionId);
+            alert("No se pudo cargar el motor de PDF.");
             return;
         }
 
         const btnBox = document.getElementById('informe-botones');
         const separador = document.getElementById('separador-informes');
-        
         if(btnBox) btnBox.style.display = 'none';
         if(separador) separador.style.display = 'none';
 
@@ -742,7 +962,14 @@
 
         const elementoBase = document.getElementById('informe-content-dinamico');
         
-        // El salto de página dinámico para la librería
+        // TRUCO MAGICO: FORMATO ESCRITORIO
+        const originalStyle = elementoBase.style.cssText;
+        elementoBase.style.width = '850px';
+        elementoBase.style.maxWidth = 'none';
+        elementoBase.style.margin = '0 auto';
+        elementoBase.style.padding = '20px';
+        elementoBase.style.backgroundColor = '#ffffff';
+
         const saltoCSS = document.querySelector('.salto-pagina');
         if(saltoCSS) saltoCSS.style.pageBreakBefore = 'always';
 
@@ -750,38 +977,18 @@
             margin:       10,
             filename:     nombreArchivo,
             image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2, useCORS: true },
+            html2canvas:  { scale: 2, useCORS: true, windowWidth: 850 },
             jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
-            pagebreak:    { mode: ['css', 'legacy'] }
+            pagebreak:    { mode: ['css', 'avoid-all'], before: '.salto-pagina' }
         };
 
         html2pdf().set(opt).from(elementoBase).save().then(() => {
+            elementoBase.style.cssText = originalStyle;
             if(btnBox) btnBox.style.display = 'flex';
             if(separador) separador.style.display = 'block';
             if(infEjecutivo) infEjecutivo.style.display = originalDisplayInf;
             if(anexoCheck) anexoCheck.style.display = originalDisplayAnex;
         });
-    }
-
-    function imprimirSeccion(seccionId) {
-        const contentDinamico = document.getElementById('informe-content-dinamico');
-        const infEjecutivo = contentDinamico.querySelector('#informe-ejecutivo');
-        const anexoCheck = contentDinamico.querySelector('#anexo-checklist');
-        const separador = contentDinamico.querySelector('#separador-informes');
-        
-        if(seccionId === 'informe-ejecutivo') {
-            if(anexoCheck) anexoCheck.style.display = 'none';
-            if(separador) separador.style.display = 'none';
-        } else {
-            if(infEjecutivo) infEjecutivo.style.display = 'none';
-            if(separador) separador.style.display = 'none';
-        }
-        
-        window.print();
-        
-        if(infEjecutivo) infEjecutivo.style.display = 'block';
-        if(anexoCheck) anexoCheck.style.display = 'block';
-        if(separador) separador.style.display = 'block';
     }
 
     function generarYGuardarInforme() {
@@ -815,8 +1022,8 @@
                 if(infAnt) {
                     let tarAnt = infAnt.tareas.find(t => t.id === tarea.id);
                     if(tarAnt) {
-                        estadoOriginalGuardado = tarAnt.estadoOriginal; 
-                        if (tarAnt.reparado) {
+                        if (data.estado !== 'Bueno' && tarAnt.reparado) {
+                            estadoOriginalGuardado = tarAnt.estadoOriginal; 
                             manteniaReparado = true;
                             fr = tarAnt.fechaReparacion;
                             nr = tarAnt.notaReparacion;
@@ -887,11 +1094,14 @@
         document.getElementById('btn-cancelar-edicion').style.display = "none";
         document.getElementById('selector-maquina').disabled = false;
 
-        alert("✅ Informe y Checklist guardados con éxito.");
+        alert("✅ Informe y Checklist guardados localmente con éxito.");
         renderizarPDF(informeData);
     }
 
     function renderizarPDF(informe) {
+        let dateStr = new Date(informe.fecha).toISOString().split('T')[0];
+        window.informeActualPDFName = `Informe_${informe.meta.codigo}_${dateStr}.pdf`;
+
         const contentDiv = document.getElementById('informe-content-dinamico');
         
         const f = new Date(informe.fecha);
@@ -968,6 +1178,21 @@
                 <p style="margin: 5px 0 0 0; font-size: 0.95em;"><strong>Trabajos ejecutados:</strong><br> ${detalles}</p>
             </div>`;
         }
+        
+        let resumenPendientesHTML = "";
+        if (criticosNoReparados.length > 0 || menoresNoReparados.length > 0) {
+            resumenPendientesHTML = `<div style="margin-top: 15px; padding: 15px; border: 2px solid #dc3545; background-color: #f8d7da; border-radius: 8px;">
+                <h4 style="color: #721c24; margin: 0 0 10px 0; text-transform: uppercase;">⚠️ ATENCIÓN: Reparaciones Pendientes</h4>
+                <ul style="margin:0; padding-left:20px; font-size: 0.95em; color: #721c24;">`;
+            
+            criticosNoReparados.forEach(t => {
+                resumenPendientesHTML += `<li><strong>[CRÍTICO]</strong> ${t.nombre}</li>`;
+            });
+            menoresNoReparados.forEach(t => {
+                resumenPendientesHTML += `<li><strong>[MENOR]</strong> ${t.nombre}</li>`;
+            });
+            resumenPendientesHTML += `</ul></div>`;
+        }
 
         let tablaAnexoHTML = "";
         informe.tareas.forEach(tarea => {
@@ -1037,7 +1262,7 @@
                 </table>
 
                 <div class="seccion-titulo">Objetivo</div>
-                <p class="doc-text">El presente informe técnico tiene como finalidad diagnosticar y documentar el estado operativo real de la máquina para facilitar la toma de decisiones informadas sobre su mantenimiento y continuity operativa.</p>
+                <p class="doc-text">El presente informe técnico tiene como finalidad diagnosticar y documentar el estado operativo real de la máquina para facilitar la toma de decisiones informadas sobre su mantenimiento y continuidad operativa.</p>
 
                 <div class="seccion-titulo">Alcance de la Inspección</div>
                 <ul class="doc-list">
@@ -1063,6 +1288,7 @@
                 </table>
 
                 ${selloReparacionHTML}
+                ${resumenPendientesHTML}
 
                 <div class="seccion-titulo">Propuesta de Acciones Correctivas</div>
                 <ul class="doc-list">${listaAccionesHTML}</ul>
@@ -1182,7 +1408,7 @@
                     ${botonReparar}
                     ${botonRepuestos}
                     ${divBotonesEdicion}
-                    <button class="btn-ver" style="margin-top:0;" onclick="verReporteAntiguo(${informe.id})">📄 Ver PDF</button>
+                    <button class="btn-ver" style="margin-top:0;" onclick="verReporteAntiguo(${informe.id})">📄 Abrir Informe</button>
                 </div>
             `;
             contenedor.appendChild(div);
@@ -1266,14 +1492,16 @@
         
         pendientes.forEach(t => {
             let claseG = t.estadoOriginal === 'Malo' ? 'rep-item critico' : 'rep-item';
+            
+            // LA CORRECCIÓN: CASILLAS AISLADAS PARA NO ARRASTRAR LA REPARACIÓN
             contenedorList.innerHTML += `
                 <div class="${claseG}">
-                    <label style="font-weight:bold; display:flex; align-items:center; gap:10px;">
-                        <input type="checkbox" class="check-rep" data-id="${t.id}" style="width:20px; height:20px;">
-                        [${t.estadoOriginal.toUpperCase()}] ${t.nombre}
+                    <label style="font-weight:bold; display:block; margin-bottom:5px; cursor:pointer;">
+                        <input type="checkbox" class="check-rep" data-id="${t.id}" style="width:18px; height:18px; vertical-align:middle; margin-right:8px;">
+                        <span style="vertical-align:middle;">[${t.estadoOriginal.toUpperCase()}] ${t.nombre}</span>
                     </label>
-                    <p style="font-size:0.85em; margin:5px 0 10px 0; color:#555;">Falla: ${t.obs}</p>
-                    <input type="text" class="form-control nota-rep" id="nota-rep-${t.id}" placeholder="Describa cómo reparó esta pieza específica...">
+                    <p style="font-size:0.85em; margin:5px 0 10px 0; color:#555; padding-left:25px;"><strong>Falla:</strong> ${t.obs || "Sin observaciones"}</p>
+                    <input type="text" class="form-control nota-rep" id="nota-rep-${t.id}" placeholder="¿Qué acción realizó para repararlo? (Opcional)" style="margin-left:25px; width:calc(100% - 25px);">
                 </div>
             `;
         });
@@ -1292,18 +1520,22 @@
         
         if (index === -1) return;
 
-        let checks = document.querySelectorAll('.check-rep');
-        let algunReparado = false;
+        let checks = document.getElementById('lista-pendientes-modal').querySelectorAll('.check-rep');
+        let reparadasAhorita = 0;
         let ahoraIso = new Date().toISOString();
 
         checks.forEach(chk => {
-            if (chk.checked) {
-                algunReparado = true;
-                let tareaId = parseInt(chk.getAttribute('data-id'));
-                let nota = document.getElementById(`nota-rep-${tareaId}`).value || "Reparado sin detalles adicionales.";
-                
-                let tarea = historial[index].tareas.find(t => t.id === tareaId);
-                if(tarea) {
+            let tareaId = parseInt(chk.getAttribute('data-id'));
+            let tarea = historial[index].tareas.find(t => t.id === tareaId);
+            
+            if (tarea) {
+                // LA CORRECCIÓN: SOLO EVALÚA Y CAMBIA LA CASILLA QUE ESTÁ MARCADA
+                if (chk.checked) {
+                    reparadasAhorita++;
+                    let notaInput = document.getElementById(`nota-rep-${tareaId}`);
+                    let nota = notaInput ? notaInput.value : "";
+                    if (!nota.trim()) nota = "Reparado sin detalles adicionales.";
+                    
                     tarea.reparado = true;
                     tarea.fechaReparacion = ahoraIso;
                     tarea.notaReparacion = nota;
@@ -1311,8 +1543,8 @@
             }
         });
 
-        if (!algunReparado) {
-            alert("No marcó ningún ítem como reparado. Debe seleccionar al menos una casilla.");
+        if (reparadasAhorita === 0) {
+            alert("⚠️ No marcó ningún ítem como reparado. Debe seleccionar al menos una casilla.");
             return;
         }
 
@@ -1321,7 +1553,23 @@
         
         cerrarModal();
         cargarHistorial();
-        alert("✅ Reparaciones guardadas. El informe PDF ha sido actualizado inteligentemente.");
+        alert(`✅ Se registraron exitosamente ${reparadasAhorita} reparación(es). El PDF ha sido actualizado.`);
+    }
+
+    // --- CORRECCIÓN: RETRASO EN LA GENERACIÓN DEL PDF DE REPUESTOS ---
+    function descargarPDFDesdeModal() {
+        if(!informeParaRepuestosId) return; 
+        let historial = JSON.parse(localStorage.getItem('historial_informes_itpa') || '[]');
+        const informe = historial.find(i => i.id === informeParaRepuestosId);
+        if(!informe) return;
+
+        document.getElementById('modal-repuestos').style.display = 'none';
+        renderizarPDF(informe);
+        
+        // Retraso crucial de 800ms para que el navegador alcance a dibujar el contenido antes de sacar la foto PDF
+        setTimeout(() => {
+            descargarPDFDirecto('informe-content-dinamico', `Solicitud_Repuestos_${informe.meta.codigo}.pdf`);
+        }, 800);
     }
 
     function abrirModalRepuestos(id) {
