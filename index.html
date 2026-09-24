@@ -345,21 +345,25 @@
     const firebaseConfig = {
       apiKey: "AIzaSyCtQoZsvkDGWhKgYaYmkHJA_7lHsOwW4Z4",
       authDomain: "app-mantenimiento-mafercal.firebaseapp.com",
-      databaseURL: "https://app-mantenimiento-mafercal-default-rtdb.firebaseio.com", // Añadido automático por seguridad
+      databaseURL: "https://app-mantenimiento-mafercal-default-rtdb.firebaseio.com", 
       projectId: "app-mantenimiento-mafercal",
       storageBucket: "app-mantenimiento-mafercal.firebasestorage.app",
       messagingSenderId: "642023996644",
       appId: "1:642023996644:web:6644596e3bc99a24d400f1"
     };
     
-    // Inicializar Firebase
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    // --- BASE DE DATOS DE FÁBRICA (Respaldo) ---
+    // Función de ayuda para limpiar nombres de llaves prohibidos por Firebase
+    function limpiarLlaveFirebase(nombre) {
+        return nombre.replace(/[.#$\[\]\/]/g, "-");
+    }
+
+    // --- BASE DE DATOS DE FÁBRICA CORREGIDA (Sin el símbolo / ) ---
     const bdDeFabrica = {
         "TRONZADORA DE METAL BOSCH GCO 14-24 J PROFESSIONAL": {
-            "meta": { "tipo": "Tronzadora de metal", "codigo": "EQ-BOSCH-GCO1424J-01", "marca": "BOSCH", "modelo": "GCO 14-24 J Professional", "potencia": "2400 W", "serie": "BS-938201-2026", "tension": "230 V / 50-60 Hz", "diametro": "14\" (355 mm) / Eje 25.4 mm", "velocidad": "3800 RPM" },
+            "meta": { "tipo": "Tronzadora de metal", "codigo": "EQ-BOSCH-GCO1424J-01", "marca": "BOSCH", "modelo": "GCO 14-24 J Professional", "potencia": "2400 W", "serie": "BS-938201-2026", "tension": "230 V / 50-60 Hz", "diametro": "14\" (355 mm) - Eje 25.4 mm", "velocidad": "3800 RPM" },
             "pauta": [
                 { "id": 1, "nombre": "Cable de alimentación y aislamiento", "desc": "Inspeccionar cortes, desgaste de aislamiento, estado del enchufe y continuidad de conexión eléctrica.", "frecuencia": "40 h / 3 meses" },
                 { "id": 2, "nombre": "Interruptor ON/OFF y bloqueo de conexión", "desc": "Verificar funcionamiento del gatillo ON/OFF y accionamiento del botón de bloqueo/seguridad de conexión (1).", "frecuencia": "40 h / 3 meses" },
@@ -397,8 +401,8 @@
                 "• Limpieza de polvos metálicos: Limpiar periódicamente las ranuras de ventilación del motor."
             ]
         },
-        "INGLETADORA DEWALT DW714 (10\" / 254 mm)": {
-            "meta": { "tipo": "Ingletadora (Sierra de Inglete)", "codigo": "EQ-DW714-01", "marca": "DeWALT", "modelo": "DW714", "potencia": "1650 W", "serie": "", "tension": "120V - 220V / 50-60 Hz", "diametro": "10\" (254 mm) / Eje 30 mm", "velocidad": "4600 RPM" },
+        "INGLETADORA DEWALT DW714 (10\" - 254 mm)": {
+            "meta": { "tipo": "Ingletadora (Sierra de Inglete)", "codigo": "EQ-DW714-01", "marca": "DeWALT", "modelo": "DW714", "potencia": "1650 W", "serie": "", "tension": "120V - 220V / 50-60 Hz", "diametro": "10\" (254 mm) - Eje 30 mm", "velocidad": "4600 RPM" },
             "pauta": [
                 { "id": 1, "nombre": "Cable de alimentación y enchufe", "desc": "Inspeccionar cortes, desgaste de aislamiento y polaridad adecuada del enchufe.", "frecuencia": "40 h / 3 meses" },
                 { "id": 2, "nombre": "Interruptor ON/OFF y seguro candado", "desc": "Comprobar accionamiento suave del gatillo y verificación del orificio para candado de seguridad.", "frecuencia": "40 h / 3 meses" },
@@ -489,8 +493,8 @@
                 "• Régimen de trabajo S6 15%: Servicio continuo con carga intermitente."
             ]
         },
-        "SIERRA DE BANCO STANLEY STST1825 (10\" / 254 mm)": {
-            "meta": { "tipo": "Sierra de banco", "codigo": "EQ-STST1825-01", "marca": "STANLEY", "modelo": "STST1825", "potencia": "1800 W", "serie": "", "tension": "120V - 220V / 50-60 Hz", "diametro": "10\" (254 mm) / Eje 16 mm", "velocidad": "4800 RPM" },
+        "SIERRA DE BANCO STANLEY STST1825 (10\" - 254 mm)": {
+            "meta": { "tipo": "Sierra de banco", "codigo": "EQ-STST1825-01", "marca": "STANLEY", "modelo": "STST1825", "potencia": "1800 W", "serie": "", "tension": "120V - 220V / 50-60 Hz", "diametro": "10\" (254 mm) - Eje 16 mm", "velocidad": "4800 RPM" },
             "pauta": [
                 { "id": 1, "nombre": "Cable de alimentación y aislamiento", "desc": "Inspeccionar cortes, desgaste de aislamiento doble y estado del enchufe de corriente.", "frecuencia": "40 h / 3 meses" },
                 { "id": 2, "nombre": "Interruptor ON/OFF y llave de seguridad", "desc": "Comprobar accionamiento del interruptor y verificación de la llave de seguridad extraíble.", "frecuencia": "40 h / 3 meses" },
@@ -523,7 +527,7 @@
         }
     };
 
-    // VARIABLES GLOBALES (Ahora alimentadas por la nube)
+    // VARIABLES GLOBALES
     let baseDeDatos = {};
     let estadoMaquinas = {};
     let historialInformes = [];
@@ -554,7 +558,6 @@
 
         let inicializado = false;
 
-        // Escuchador en Tiempo Real
         db.ref('/').on('value', (snapshot) => {
             const data = snapshot.val() || {};
             
@@ -567,13 +570,11 @@
             } else {
                 historialInformes = rawHistorial;
             }
-            historialInformes.sort((a,b) => b.id - a.id); // Ordenar del más nuevo al más viejo
+            historialInformes.sort((a,b) => b.id - a.id); 
 
             if (!inicializado) {
-                // Primera carga
                 inicializado = true;
                 
-                // Si la nube estaba vacía, subimos la info de fábrica para inicializarla
                 if(!data.baseDeDatos) {
                     db.ref('baseDeDatos').set(baseDeDatos);
                 }
@@ -584,11 +585,12 @@
                 document.getElementById('app-view').style.display = 'block';
                 inicializarSelectorMaquinas();
             } else {
-                // Actualizaciones en segundo plano por si otro mecánico hace algo
                 if(document.getElementById('btn-historial').classList.contains('active')) cargarHistorial();
                 if(document.getElementById('btn-creador').classList.contains('active')) listarEquiposEnCreador();
-                // NO llamamos a cargarDatosMaquina() para no borrarle lo que el técnico esté escribiendo
             }
+        }, (error) => {
+            alert("Error de conexión con la nube. Asegúrate de tener las Reglas de Firebase en TRUE.");
+            console.error(error);
         });
     };
 
@@ -604,7 +606,6 @@
             
             if (!estadoMaquinas[maq]) {
                 estadoMaquinas[maq] = { horas: 0, fechaUltimoMaint: new Date().toISOString().split('T')[0], serie: baseDeDatos[maq].meta.serie || "", ubicacion: "" };
-                // Opcional: Subir este estado a la nube si no existía
                 db.ref('estadoMaquinas/' + maq).set(estadoMaquinas[maq]);
             }
         }
@@ -794,7 +795,7 @@
         if(isNaN(add) || add <= 0) return alert("Ingrese un número válido mayor a 0.");
         
         estadoMaquinas[maquinaActual].horas += add;
-        db.ref('estadoMaquinas').set(estadoMaquinas); // Subir a nube
+        db.ref('estadoMaquinas').set(estadoMaquinas); 
         
         document.getElementById('input-sumar-horas').value = "";
         actualizarHorometro(estadoMaquinas[maquinaActual]);
@@ -898,11 +899,13 @@
     }
 
     function guardarNuevoEquipo() {
-        let idNombre = document.getElementById('nuevo-eq-id').value.trim().toUpperCase();
-        if(!idNombre) return alert("Debe ingresar el Nombre Principal de la máquina.");
+        let idNombreRaw = document.getElementById('nuevo-eq-id').value.trim().toUpperCase();
+        if(!idNombreRaw) return alert("Debe ingresar el Nombre Principal de la máquina.");
+
+        let idNombre = limpiarLlaveFirebase(idNombreRaw); // Sanea el nombre para Firebase
 
         if(equipoEnEdicion && equipoEnEdicion !== idNombre) {
-            delete baseDeDatos[equipoEnEdicion]; // Si le cambiaron el nombre, borramos el original
+            delete baseDeDatos[equipoEnEdicion]; 
         }
 
         let meta = {
@@ -938,7 +941,6 @@
             instrucciones: instruccionesArray
         };
 
-        // SUBIR A FIREBASE
         db.ref('baseDeDatos').set(baseDeDatos);
         
         alert(`✅ Equipo "${idNombre}" guardado exitosamente en la nube.`);
@@ -982,7 +984,7 @@
         }
     }
 
-    // --- FUNCIONES DE DESCARGA PDF LOCAL ---
+    // --- FUNCIONES DE DESCARGA PDF ---
     function descargarPDFDirecto(seccionId, nombreArchivo) {
         if (typeof html2pdf === 'undefined') {
             alert("No se pudo cargar el motor de PDF.");
@@ -1008,7 +1010,6 @@
 
         const elementoBase = document.getElementById('informe-content-dinamico');
         
-        // TRUCO MAGICO: FORMATO ESCRITORIO
         const originalStyle = elementoBase.style.cssText;
         elementoBase.style.width = '850px';
         elementoBase.style.maxWidth = 'none';
@@ -1125,7 +1126,6 @@
             historialInformes.unshift(informeData);
         }
         
-        // GUARDAR EN FIREBASE
         db.ref('historialInformes').set(historialInformes);
 
         if(!informeEditandoId) {
@@ -1462,7 +1462,7 @@
     function eliminarReporte(id) {
         if(confirm("¿Estás seguro que deseas eliminar este informe de la nube permanentemente?")) {
             historialInformes = historialInformes.filter(i => i.id !== id);
-            db.ref('historialInformes').set(historialInformes); // Sincroniza la eliminación
+            db.ref('historialInformes').set(historialInformes); 
             cargarHistorial();
         }
     }
@@ -1587,14 +1587,13 @@
         }
 
         historialInformes[index].estado = calcularEstadoGlobal(historialInformes[index].tareas);
-        db.ref('historialInformes').set(historialInformes); // Guardar en la nube
+        db.ref('historialInformes').set(historialInformes); 
         
         cerrarModal();
         cargarHistorial();
         alert(`✅ Se registraron exitosamente ${reparadasAhorita} reparación(es). El PDF ha sido actualizado en la nube.`);
     }
 
-    // --- DESCARGA PDF CON RETRASO ---
     function descargarPDFDesdeModal() {
         if(!informeParaRepuestosId) return; 
         const informe = historialInformes.find(i => i.id === informeParaRepuestosId);
