@@ -996,45 +996,46 @@
         if(btnBox) btnBox.style.display = 'none';
         if(separador) separador.style.display = 'none';
 
-        const infEjecutivo = document.getElementById('informe-ejecutivo');
-        const anexoCheck = document.getElementById('anexo-checklist');
-        
-        let originalDisplayInf = infEjecutivo ? infEjecutivo.style.display : '';
-        let originalDisplayAnex = anexoCheck ? anexoCheck.style.display : '';
-
-        if(seccionId === 'informe-ejecutivo') {
-            if(anexoCheck) anexoCheck.style.display = 'none';
-        } else if (seccionId === 'anexo-checklist') {
-            if(infEjecutivo) infEjecutivo.style.display = 'none';
-        }
-
         const elementoBase = document.getElementById('informe-content-dinamico');
+        const contenedorView = document.getElementById('informe-view');
         
-        const originalStyle = elementoBase.style.cssText;
-        elementoBase.style.width = '850px';
-        elementoBase.style.maxWidth = 'none';
-        elementoBase.style.margin = '0 auto';
-        elementoBase.style.padding = '20px';
-        elementoBase.style.backgroundColor = '#ffffff';
+        // 1. Ñañongatu umi estilo ymave guare
+        const originalBaseStyle = elementoBase.style.cssText;
+        const originalViewStyle = contenedorView.style.cssText;
+        const originalScrollX = window.scrollX;
+        const originalScrollY = window.scrollY;
 
-        const saltoCSS = document.querySelector('.salto-pagina');
-        if(saltoCSS) saltoCSS.style.pageBreakBefore = 'always';
+        // 2. Ñamoĩ porã 750px ipukukue ani hag̃ua oñekytĩ akatúa gotyo
+        contenedorView.style.padding = '0';
+        contenedorView.style.margin = '0';
+        contenedorView.style.position = 'absolute'; 
+        contenedorView.style.left = '0';
+        contenedorView.style.top = '0';
+        
+        elementoBase.style.margin = '0'; 
+        elementoBase.style.padding = '20px';
+        elementoBase.style.width = '690px'; 
+        elementoBase.style.maxWidth = '6900px';
+        
+        window.scrollTo(0, 0);
 
         var opt = {
-            margin:       10,
+            margin:       10, // Margen blanco PDF-pe g̃uarã
             filename:     nombreArchivo,
             image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2, useCORS: true, windowWidth: 850 },
-            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
-            pagebreak:    { mode: ['css', 'avoid-all'], before: '.salto-pagina' }
+            // Ñambohete 750px upe kuatia tuichakue
+            html2canvas:  { scale: 2, useCORS: true, windowWidth: 690, x: 0, y: 0, scrollX: 0, scrollY: 0 },
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
         };
 
         html2pdf().set(opt).from(elementoBase).save().then(() => {
-            elementoBase.style.cssText = originalStyle;
+            // 3. Jajapo jey ymave guaréicha oñemboguejy rire
+            elementoBase.style.cssText = originalBaseStyle;
+            contenedorView.style.cssText = originalViewStyle;
+            window.scrollTo(originalScrollX, originalScrollY);
+            
             if(btnBox) btnBox.style.display = 'flex';
             if(separador) separador.style.display = 'block';
-            if(infEjecutivo) infEjecutivo.style.display = originalDisplayInf;
-            if(anexoCheck) anexoCheck.style.display = originalDisplayAnex;
         });
     }
 
