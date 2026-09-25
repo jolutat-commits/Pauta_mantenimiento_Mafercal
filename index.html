@@ -83,8 +83,9 @@
         .doc-title { text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; font-size: 1.6em; text-transform: uppercase; font-weight: bold; }
         .seccion-titulo { font-size: 1.1em; font-weight: bold; background-color: #f2f2f2; padding: 5px; border-top: 1px solid #000; border-bottom: 1px solid #000; margin-top: 20px; margin-bottom: 10px; text-transform: uppercase; }
         
-        .doc-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 0.9em; page-break-inside: auto; }
-        .doc-table td, .doc-table th { border: 1px solid #000; padding: 6px 10px; vertical-align: top; }
+        .doc-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 0.9em; table-layout: fixed; }
+        .doc-table tr { page-break-inside: avoid !important; }
+        .doc-table td, .doc-table th { border: 1px solid #000; padding: 6px 10px; vertical-align: top; word-wrap: break-word; overflow-wrap: break-word; page-break-inside: avoid !important; }
         .doc-table th { background-color: #f2f2f2; text-align: left; }
         .col-header { width: 35%; font-weight: bold; background-color: #fafafa; }
 
@@ -984,7 +985,7 @@
         }
     }
 
-    // --- FUNCIONES DE DESCARGA PDF ---
+   // --- FUNCIONES DE DESCARGA PDF ---
     function descargarPDFDirecto(seccionId, nombreArchivo) {
         if (typeof html2pdf === 'undefined') {
             alert("No se pudo cargar el motor de PDF.");
@@ -999,40 +1000,39 @@
         const elementoBase = document.getElementById('informe-content-dinamico');
         const contenedorView = document.getElementById('informe-view');
         
-        // 1. Ñañongatu umi estilo ymave guare
+        // 1. GUARDAMOS ESTILOS (Para que tu app no se desorme al terminar)
         const originalBaseStyle = elementoBase.style.cssText;
         const originalViewStyle = contenedorView.style.cssText;
-        const originalScrollX = window.scrollX;
-        const originalScrollY = window.scrollY;
-
-        // 2. Ñamoĩ porã 750px ipukukue ani hag̃ua oñekytĩ akatúa gotyo
+        
+        // 2. FORZAMOS POSICIÓN (Evita el corte del lado izquierdo en celulares)
         contenedorView.style.padding = '0';
         contenedorView.style.margin = '0';
-        contenedorView.style.position = 'absolute'; 
+        contenedorView.style.position = 'absolute';
         contenedorView.style.left = '0';
         contenedorView.style.top = '0';
         
-        elementoBase.style.margin = '0'; 
+        // 3. ANCHO PERFECTO PARA HOJA A4 (700px evita el corte del lado derecho)
+        elementoBase.style.margin = '0';
         elementoBase.style.padding = '20px';
-        elementoBase.style.width = '690px'; 
-        elementoBase.style.maxWidth = '690px';
+        elementoBase.style.width = '700px';
+        elementoBase.style.maxWidth = '700px';
         
         window.scrollTo(0, 0);
 
         var opt = {
-            margin:       10, // Margen blanco PDF-pe g̃uarã
+            margin:       [15, 10, 15, 10], // Da respiro arriba y abajo para no partir la tabla
             filename:     nombreArchivo,
             image:        { type: 'jpeg', quality: 0.98 },
-            // Ñambohete 750px upe kuatia tuichakue
-            html2canvas:  { scale: 2, useCORS: true, windowWidth: 690, x: 0, y: 0, scrollX: 0, scrollY: 0 },
-            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            // Sincronizamos la cámara a 700px exactos
+            html2canvas:  { scale: 2, useCORS: true, windowWidth: 700, x: 0, y: 0, scrollX: 0, scrollY: 0 },
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
+            pagebreak:    { mode: ['css', 'avoid-all'], before: '.salto-pagina' }
         };
 
         html2pdf().set(opt).from(elementoBase).save().then(() => {
-            // 3. Jajapo jey ymave guaréicha oñemboguejy rire
+            // 4. RESTAURAMOS LA PANTALLA A LA NORMALIDAD
             elementoBase.style.cssText = originalBaseStyle;
             contenedorView.style.cssText = originalViewStyle;
-            window.scrollTo(originalScrollX, originalScrollY);
             
             if(btnBox) btnBox.style.display = 'flex';
             if(separador) separador.style.display = 'block';
