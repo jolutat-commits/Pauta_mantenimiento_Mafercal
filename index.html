@@ -1747,42 +1747,72 @@
             return;
         }
 
+        // Si la máquina ya no está en la base de datos, la restauramos automáticamente usando el informe
+        if (!baseDeDatos[informe.maquina]) {
+            baseDeDatos[informe.maquina] = {
+                meta: informe.meta || { tipo: "Equipo", codigo: "S/N", marca: "DeWALT", modelo: informe.maquina, potencia: "-", serie: informe.serie || "", ubicacion: informe.ubicacion || "" },
+                pauta: informe.tareas.map((t, idx) => ({ id: t.id || (idx + 1), nombre: t.nombre, desc: t.desc || "Inspección visual.", frecuencia: "40 h / 3 meses" })),
+                instrucciones: ["1. INSTRUCCIONES GENERALES", "• Seguir normas de seguridad."]
+            };
+        }
+
         informeEditandoId = id;
 
-        document.getElementById('selector-maquina').value = informe.maquina;
-        document.getElementById('selector-maquina').disabled = true;
+        // Asegurarnos de que el selector tenga la opción de la máquina disponible
+        const selector = document.getElementById('selector-maquina');
+        let existeEnSelector = Array.from(selector.options).some(opt => opt.value === informe.maquina);
+        if (!existeEnSelector) {
+            const option = document.createElement('option');
+            option.value = informe.maquina;
+            option.innerText = informe.maquina;
+            selector.insertBefore(option, selector.firstChild);
+        }
+
+        selector.value = informe.maquina;
+        selector.disabled = true;
         
         cargarDatosMaquina(); 
 
         document.getElementById('ctrl-fecha').value = informe.fecha.split('T')[0];
         document.getElementById('ctrl-tecnico').value = informe.inspector || "";
         document.getElementById('ctrl-supervisor').value = informe.supervisor || "";
-        document.getElementById('ctrl-serie').value = informe.serie || "";
-        document.getElementById('ctrl-ubicacion').value = informe.ubicacion || "";
-        document.getElementById('ctrl-horas-edit').value = informe.horas || 0;
+        
+        let inpSerie = document.getElementById('ctrl-serie');
+        if (inpSerie) inpSerie.value = informe.serie || "";
+        
+        let inpUbicacion = document.getElementById('ctrl-ubicacion');
+        if (inpUbicacion) inpUbicacion.value = informe.ubicacion || "";
+        
+        let inpHoras = document.getElementById('ctrl-horas-edit');
+        if (inpHoras) inpHoras.value = informe.horas || 0;
 
         actualizarNombresFirmas();
 
         limpiarFirma('tecnico');
         if(informe.firmaTecnico) {
             let imgT = new Image();
-            imgT.onload = () => canvases.tecnico.ctx.drawImage(imgT, 0, 0);
+            imgT.onload = () => {
+                if(canvases.tecnico.ctx) canvases.tecnico.ctx.drawImage(imgT, 0, 0);
+            };
             imgT.src = informe.firmaTecnico;
         }
 
         limpiarFirma('supervisor');
         if(informe.firmaSupervisor) {
             let imgS = new Image();
-            imgS.onload = () => canvases.supervisor.ctx.drawImage(imgS, 0, 0);
+            imgS.onload = () => {
+                if(canvases.supervisor.ctx) canvases.supervisor.ctx.drawImage(imgS, 0, 0);
+            };
             imgS.src = informe.firmaSupervisor;
         }
 
         document.getElementById('btn-generar').innerText = "Actualizar y Guardar Cambios";
         document.getElementById('btn-cancelar-edicion').style.display = "inline-block";
+        
         cambiarPestana('inspeccion');
         
         window.scrollTo(0, 0);
-        alert("✏️ Modo Edición Activado. La pauta está bloqueada. Modifique los datos generales o firmas y presione 'Actualizar y Guardar Cambios'.");
+        alert("✏️ Modo Edición Activado. Ingrese o modifique la firma que falta y presione 'Actualizar y Guardar Cambios'.");
     }
 
     function cancelarEdicion() {
