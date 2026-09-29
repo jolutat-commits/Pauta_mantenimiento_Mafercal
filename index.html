@@ -1252,123 +1252,160 @@
     }
 
     function generarYGuardarInforme() {
-        const meta = baseDeDatos[maquinaActual].meta;
-        const fechaInp = document.getElementById('ctrl-fecha').value;
-        const tecnico = document.getElementById('ctrl-tecnico').value.trim();
-        const supervisor = document.getElementById('ctrl-supervisor').value.trim();
-        const serie = document.getElementById('ctrl-serie').value.trim();
-        const ubicacion = document.getElementById('ctrl-ubicacion').value.trim();
-        const horasReporte = document.getElementById('ctrl-horas-edit').value; 
-
-        let firmaTec = isCanvasEmpty(canvases.tecnico.el) ? null : canvases.tecnico.el.toDataURL();
-        let firmaSup = isCanvasEmpty(canvases.supervisor.el) ? null : canvases.supervisor.el.toDataURL();
-        
-        if(informeEditandoId) {
-            let infAntiguo = historialInformes.find(i => i.id === informeEditandoId);
-            if(infAntiguo) {
-                if(!firmaTec && infAntiguo.firmaTecnico) firmaTec = infAntiguo.firmaTecnico;
-                if(!firmaSup && infAntiguo.firmaSupervisor) firmaSup = infAntiguo.firmaSupervisor;
+        try {
+            // Validación de seguridad para la máquina actual
+            if (!maquinaActual || !baseDeDatos[maquinaActual]) {
+                const selector = document.getElementById('selector-maquina');
+                if (selector && selector.value) {
+                    maquinaActual = selector.value;
+                }
             }
-        }
-
-        if (!fechaInp || !tecnico || !supervisor || !serie || !ubicacion || horasReporte === "" || !firmaTec) {
-            alert("⚠️ Faltan datos obligatorios. Complete todos los campos de texto y asegúrese de ingresar la FIRMA DEL TÉCNICO.");
-            return; 
-        }
-        
-        let fechaBase = fechaInp ? new Date(fechaInp + "T00:00:00") : new Date();
-
-        if(!informeEditandoId) {
-            estadoMaquinas[maquinaActual].serie = serie;
-            estadoMaquinas[maquinaActual].ubicacion = ubicacion;
-        }
-
-        let tareasReporte = [];
-        baseDeDatos[maquinaActual].pauta.forEach(tarea => {
-            const data = registros[tarea.id];
             
-            let manteniaReparado = false;
-            let fr = null;
-            let nr = "";
-            let estadoOriginalGuardado = data.estado; 
+            if (!baseDeDatos[maquinaActual]) {
+                alert("⚠️ Error crítico: No se encontró la base de datos para la máquina actual (" + maquinaActual + ").");
+                return;
+            }
 
+            const meta = baseDeDatos[maquinaActual].meta;
+            const fechaInp = document.getElementById('ctrl-fecha').value;
+            const tecnico = document.getElementById('ctrl-tecnico').value.trim();
+            const supervisor = document.getElementById('ctrl-supervisor').value.trim();
+            
+            let inpSerie = document.getElementById('ctrl-serie');
+            let serie = inpSerie ? inpSerie.value.trim() : (meta.serie || "S/N");
+            
+            let inpUbicacion = document.getElementById('ctrl-ubicacion');
+            let ubicacion = inpUbicacion ? inpUbicacion.value.trim() : (meta.ubicacion || "Sin ubicación");
+            
+            const horasReporte = document.getElementById('ctrl-horas-edit').value; 
+
+            let firmaTec = isCanvasEmpty(canvases.tecnico.el) ? null : canvases.tecnico.el.toDataURL();
+            let firmaSup = isCanvasEmpty(canvases.supervisor.el) ? null : canvases.supervisor.el.toDataURL();
+            
             if(informeEditandoId) {
-                let infAnt = historialInformes.find(i => i.id === informeEditandoId);
-                if(infAnt) {
-                    let tarAnt = infAnt.tareas.find(t => t.id === tarea.id);
-                    if(tarAnt) {
-                        if (data.estado !== 'Bueno' && tarAnt.reparado) {
-                            estadoOriginalGuardado = tarAnt.estadoOriginal; 
-                            manteniaReparado = true;
-                            fr = tarAnt.fechaReparacion;
-                            nr = tarAnt.notaReparacion;
-                        }
-                    }
+                let infAntiguo = historialInformes.find(i => i.id === informeEditandoId);
+                if(infAntiguo) {
+                    if(!firmaTec && infAntiguo.firmaTecnico) firmaTec = infAntiguo.firmaTecnico;
+                    if(!firmaSup && infAntiguo.firmaSupervisor) firmaSup = infAntiguo.firmaSupervisor;
                 }
             }
 
-            tareasReporte.push({
-                id: tarea.id,
-                nombre: tarea.nombre,
-                desc: tarea.desc,
-                estadoOriginal: estadoOriginalGuardado,
-                obs: data.obs,
-                accion: data.accion,
-                reparado: manteniaReparado, 
-                fechaReparacion: manteniaReparado ? fr : null,
-                notaReparacion: manteniaReparado ? nr : ""
-            });
-        });
-
-        const informeData = {
-            id: informeEditandoId ? informeEditandoId : Date.now(),
-            fecha: fechaBase.toISOString(),
-            maquina: maquinaActual,
-            inspector: tecnico,
-            supervisor: supervisor,
-            firmaTecnico: firmaTec,
-            firmaSupervisor: firmaSup,
-            serie: serie,
-            ubicacion: ubicacion,
-            horas: horasReporte, 
-            meta: meta,
-            tareas: tareasReporte
-        };
-
-        informeData.estado = calcularEstadoGlobal(tareasReporte, firmaSup);
-
-        if (informeEditandoId) {
-            let index = historialInformes.findIndex(i => i.id === informeEditandoId);
-            if(index !== -1) historialInformes[index] = informeData;
-        } else {
-            historialInformes.unshift(informeData);
-        }
-        
-        db.ref('historialInformes').set(historialInformes);
-
-        if(!informeEditandoId) {
-            estadoMaquinas[maquinaActual].horas = 0;
-            estadoMaquinas[maquinaActual].fechaUltimoMaint = fechaBase.toISOString().split('T')[0];
-            db.ref('estadoMaquinas').set(estadoMaquinas);
-        }
-
-        informeEditandoId = null;
-        document.getElementById('btn-generar').innerText = "Generar y Guardar Informe";
-        document.getElementById('btn-cancelar-edicion').style.display = "none";
-        document.getElementById('selector-maquina').disabled = false;
-
-        if (!firmaSup) {
-            alert("⚠️ Informe guardado temporalmente. Falta la firma de Eduardo Núñez o José Tapia para finalizarlo.");
-            if(confirm("¿Deseas enviarles un WhatsApp ahora para avisarles que deben revisarlo y firmarlo?")) {
-                let msj = `Hola! He terminado la inspección técnica de la máquina ${maquinaActual}. Está guardada en el sistema esperando tu firma para finalizar el reporte.`;
-                window.open(`https://wa.me/?text=${encodeURIComponent(msj)}`, '_blank');
+            if (!fechaInp || !tecnico || !supervisor || horasReporte === "" || !firmaTec) {
+                alert("⚠ Faltan datos obligatorios. Complete todos los campos de texto y asegúrese de ingresar la FIRMA DEL TÉCNICO.");
+                return; 
             }
-            cambiarPestana('historial'); 
-            return; 
-        }
+            
+            let fechaBase = fechaInp ? new Date(fechaInp + "T00:00:00") : new Date();
 
-        alert("✅ Informe y Checklist finalizados y guardados exitosamente.");
-        renderizarPDF(informeData);
+            if(!informeEditandoId) {
+                if(estadoMaquinas[maquinaActual]) {
+                    estadoMaquinas[maquinaActual].serie = serie;
+                    estadoMaquinas[maquinaActual].ubicacion = ubicacion;
+                    db.ref('estadoMaquinas').set(estadoMaquinas);
+                }
+            }
+
+            let tareasReporte = [];
+            baseDeDatos[maquinaActual].pauta.forEach(tarea => {
+                const data = registros[tarea.id] || { estado: 'Bueno', obs: '', accion: '' };
+                
+                let manteniaReparado = false;
+                let fr = null;
+                let nr = "";
+                let estadoOriginalGuardado = data.estado; 
+
+                if(informeEditandoId) {
+                    let infAnt = historialInformes.find(i => i.id === informeEditandoId);
+                    if(infAnt && infAnt.tareas) {
+                        let tarAnt = infAnt.tareas.find(t => t.id === tarea.id);
+                        if(tarAnt) {
+                            if (data.estado !== 'Bueno' && tarAnt.reparado) {
+                                estadoOriginalGuardado = tarAnt.estadoOriginal; 
+                                manteniaReparado = true;
+                                fr = tarAnt.fechaReparacion;
+                                nr = tarAnt.notaReparacion;
+                            }
+                        }
+                    }
+                }
+
+                tareasReporte.push({
+                    id: tarea.id,
+                    nombre: tarea.nombre,
+                    desc: tarea.desc,
+                    estadoOriginal: estadoOriginalGuardado,
+                    obs: data.obs || "",
+                    accion: data.accion || "",
+                    reparado: manteniaReparado, 
+                    fechaReparacion: manteniaReparado ? fr : null,
+                    notaReparacion: manteniaReparado ? nr : ""
+                });
+            });
+
+            const informeData = {
+                id: informeEditandoId ? informeEditandoId : Date.now(),
+                fecha: fechaBase.toISOString(),
+                maquina: maquinaActual,
+                inspector: tecnico,
+                supervisor: supervisor,
+                firmaTecnico: firmaTec,
+                firmaSupervisor: firmaSup,
+                serie: serie,
+                ubicacion: ubicacion,
+                horas: horasReporte, 
+                meta: meta,
+                tareas: tareasReporte
+            };
+
+            informeData.estado = calcularEstadoGlobal(tareasReporte, firmaSup);
+
+            if (informeEditandoId) {
+                let index = historialInformes.findIndex(i => i.id === informeEditandoId);
+                if(index !== -1) {
+                    historialInformes[index] = informeData;
+                } else {
+                    historialInformes.unshift(informeData);
+                }
+            } else {
+                historialInformes.unshift(informeData);
+            }
+            
+            db.ref('historialInformes').set(historialInformes);
+
+            if(!informeEditandoId) {
+                if(estadoMaquinas[maquinaActual]) {
+                    estadoMaquinas[maquinaActual].horas = 0;
+                    estadoMaquinas[maquinaActual].fechaUltimoMaint = fechaBase.toISOString().split('T')[0];
+                    db.ref('estadoMaquinas').set(estadoMaquinas);
+                }
+            }
+
+            let eraEdicion = informeEditandoId !== null;
+
+            informeEditandoId = null;
+            document.getElementById('btn-generar').innerText = "Generar y Guardar Informe";
+            document.getElementById('btn-cancelar-edicion').style.display = "none";
+            document.getElementById('selector-maquina').disabled = false;
+
+            if (!firmaSup) {
+                alert("⚠️ Informe guardado temporalmente. Falta la firma para finalizarlo.");
+                cambiarPestana('historial'); 
+                return; 
+            }
+
+            if (eraEdicion) {
+                alert("✅ Informe actualizado y guardado exitosamente.");
+                cambiarPestana('historial');
+                return;
+            }
+
+            alert("✅ Informe y Checklist finalizados y guardados exitosamente.");
+            renderizarPDF(informeData);
+
+        } catch (error) {
+            alert("❌ Error al procesar el informe: " + error.message);
+            console.error(error);
+        }
     }
     function renderizarPDF(informe) {
         let dateStr = new Date(informe.fecha).toISOString().split('T')[0];
@@ -1821,6 +1858,9 @@
         document.getElementById('btn-cancelar-edicion').style.display = "none";
         document.getElementById('selector-maquina').disabled = false;
         cargarDatosMaquina();
+        
+        // Te devuelve automáticamente al historial al cancelar
+        cambiarPestana('historial');
         alert("Edición cancelada.");
     }
 
@@ -2112,6 +2152,17 @@
     
     // --- SISTEMA DE NAVEGACIÓN MAESTRO ---
     function navegarA(destino) {
+        // Asegurar que la vista de informes PDF esté oculta y se muestre la app principal
+        let informeView = document.getElementById('informe-view');
+        if (informeView) informeView.style.display = 'none';
+        
+        let appView = document.getElementById('app-view');
+        if (appView) appView.style.display = 'block';
+
+        // Sincronizar el select superior para que refleje la pestaña actual
+        let menu = document.getElementById('menu-navegacion-principal');
+        if (menu) menu.value = destino;
+
         let vistas = document.querySelectorAll('.tab-content, .view');
         for (let i = 0; i < vistas.length; i++) {
             vistas[i].classList.remove('active');
@@ -2126,29 +2177,19 @@
 
         let selectorContainer = document.getElementById('selector-container');
         if (selectorContainer) {
-            if (destino === 'historial' || destino === 'instrucciones' || destino === 'creador') {
-                selectorContainer.style.display = 'none';
-            } else {
-                selectorContainer.style.display = 'block';
-            }
+            selectorContainer.style.display = (destino === 'historial' || destino === 'instrucciones' || destino === 'creador') ? 'none' : 'block';
         }
 
         let btnGenerar = document.getElementById('btn-generar');
         if (btnGenerar) {
-            if (destino === 'inspeccion') {
-                btnGenerar.style.display = 'block';
-            } else {
-                btnGenerar.style.display = 'none';
-            }
+            btnGenerar.style.display = (destino === 'inspeccion') ? 'block' : 'none';
         }
 
-        if (destino === 'historial') {
-            cargarHistorial();
-        }
-        if (destino === 'creador') {
-            listarEquiposEnCreador();
-        }
+        if (destino === 'historial') cargarHistorial();
+        if (destino === 'creador') listarEquiposEnCreador();
     }
+    
+    window.cambiarPestana = navegarA;
     
     window.cambiarPestana = navegarA;	
 </script>
