@@ -117,21 +117,34 @@
             <h2>📱 Sistema de Gestión de Mantenimiento</h2>
         </div>
 
-        <div class="tabs">
-            <button class="tab-btn active" onclick="cambiarPestana('inspeccion')" id="btn-inspeccion">📝 Inspección</button>
-            <button class="tab-btn" onclick="cambiarPestana('horometro')" id="btn-horometro">⏱️ Horómetro</button>
-            <button class="tab-btn" onclick="cambiarPestana('historial')" id="btn-historial">📂 Historial</button>
-            <button class="tab-btn" onclick="cambiarPestana('instrucciones')" id="btn-instrucciones">📖 Manual</button>
-            <button class="tab-btn" onclick="cambiarPestana('creador')" id="btn-creador">⚙️ Creador</button>
-        </div>
-        
-        <div class="input-group" id="selector-container">
-            <label>Seleccionar Equipo Activo:</label>
-            <select id="selector-maquina" onchange="cargarDatosMaquina()"></select>
+        <div style="margin: 15px 0; text-align: center;">
+		    <select id="menu-navegacion-principal" onchange="navegarA(this.value)" style="width: 100%; max-width: 450px; padding: 12px; font-size: 16px; font-weight: bold; border: 2px solid #0056b3; border-radius: 6px; background: #ffffff; color: #333; cursor: pointer;">
+                <option value="inspeccion">📋 Inspección</option>
+                <option value="horometro">⏱️ Horómetro</option>
+                <option value="historial">📁 Historial</option>
+                <option value="instrucciones">📖 instrucciones</option>
+                <option value="creador">⚙️ Creador</option>
+			</select>
+		</div>	
+        <div class="input-group" id="selector-container" style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 15px; border-left: 4px solid #17a2b8;">
+            <label style="font-weight: bold; color: #0056b3; font-size: 1em; margin-bottom: 10px;">🔍 Buscar y Seleccionar Equipo:</label>
+            <input type="text" id="buscador-maquina" class="form-control" placeholder="Buscar por marca, modelo, código o nombre..." onkeyup="filtrarSelectorMaquinas()" style="margin-bottom: 10px;">
+            <select id="selector-maquina" onchange="cargarDatosMaquina()" class="form-control" style="background-color: #f8f9fa; font-weight: bold; cursor: pointer;"></select>
         </div>
 
         <!-- Pestaña 1: INSPECCIÓN -->
         <div id="tab-inspeccion" class="tab-content active">
+		<!-- PANEL DESPLEGABLE DE ESTADO GENERAL -->
+		<div class="card" style="margin-top: 15px; border-left: 5px solid #28a745;">
+		    <details style="cursor: pointer;">
+			    <summary style="font-weight: bold; font-size: 1.1em; color: #28a745; outline: none; padding: 5px;">
+				    📊 Desplegar Estado Óptimo y Control de Equipos
+				</summary>
+				<div id="contenedor-estado-equipos" style="margin-top: 15px; border-top: 1px solid #ddd; padding-top: 10px;">
+				    <!-- Aquí aparecerá la lista automáticamente -->
+				</div>	
+			</details>
+		</div>	
             <div id="alerta-inspeccion" class="alert-box alert-success">
                 ✅ Máquina operativa. No requiere mantenimiento urgente.
             </div>
@@ -144,6 +157,7 @@
                     <label>Fecha de revisión:</label>
                     <input type="date" id="ctrl-fecha" class="form-control">
                 </div>
+						
                 <div class="input-group">
                     <label>Técnico responsable:</label>
                     <input type="text" id="ctrl-tecnico" class="form-control" placeholder="Ej: Arturo Saavedra" oninput="actualizarNombresFirmas()">
@@ -151,14 +165,6 @@
                 <div class="input-group">
                     <label>Supervisor responsable:</label>
                     <input type="text" id="ctrl-supervisor" class="form-control" placeholder="Ej: Eduardo Núñez" oninput="actualizarNombresFirmas()">
-                </div>
-                <div class="input-group">
-                    <label>Número de serie del equipo:</label>
-                    <input type="text" id="ctrl-serie" class="form-control">
-                </div>
-                <div class="input-group">
-                    <label>Ubicación / Área:</label>
-                    <input type="text" id="ctrl-ubicacion" class="form-control" placeholder="Ej: Taller Mecánico">
                 </div>
                 <div class="input-group">
                     <label>Horas de uso del equipo (Editable):</label>
@@ -226,6 +232,9 @@
             <div class="card">
                 <h3 style="margin-top:0; color:var(--primary);">Archivos Guardados (Nube)</h3>
                 <p style="font-size:0.9em; color:#555;">Si un equipo tiene fallas, usa los botones para <strong>Reparar</strong> o <strong>Solicitar Repuestos</strong> a Compras.</p>
+				<div style="margin-bottom: 15px;">
+				    <input type="text" id="buscador-historial" placeholder="🔍 Buscar por nombre de máquina, inspector o estado..." onkeyup="filtrarHistorial()" style="width: 100%; padding: 10px; font-size: 16px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box;">
+				</div>
                 <div id="lista-historial"></div>
                 <button onclick="limpiarHistorial()" style="width:100%; padding:10px; margin-top:20px; background:#dc3545; color:white; border:none; border-radius:6px; cursor:pointer;">Limpiar Historial Completo</button>
             </div>
@@ -251,32 +260,49 @@
                         <input type="text" id="nuevo-eq-id" class="form-control" placeholder="Ej: SIERRA CIRCULAR MAKITA">
                     </div>
                     <div style="display:flex; gap:10px;">
-                        <div class="input-group" style="flex:1;"><label>Código / Tag:</label><input type="text" id="nuevo-eq-codigo" class="form-control" placeholder="Ej: EQ-01"></div>
-                        <div class="input-group" style="flex:1;"><label>Marca:</label><input type="text" id="nuevo-eq-marca" class="form-control" placeholder="Ej: Makita"></div>
-                    </div>
-                    <div style="display:flex; gap:10px;">
                         <div class="input-group" style="flex:1;"><label>Modelo:</label><input type="text" id="nuevo-eq-modelo" class="form-control" placeholder="Ej: 5007N"></div>
                         <div class="input-group" style="flex:1;"><label>Potencia:</label><input type="text" id="nuevo-eq-potencia" class="form-control" placeholder="Ej: 1800 W"></div>
                     </div>
                 </div>
 
                 <div style="background:#e9f2fb; padding:15px; border-radius:8px; margin-bottom:15px; border: 1px solid #b8daff;">
-                    <h4 style="margin-top:0; color:#0056b3;">2. Pauta de Inspección (Checklist)</h4>
-                    <div id="contenedor-nuevas-tareas"></div>
-                    <button onclick="agregarFilaTarea()" style="width:100%; background:#0056b3; color:white; border:none; padding:10px; border-radius:4px; cursor:pointer; font-weight:bold; margin-bottom:10px;">+ Añadir Punto a Revisar</button>
+                    <div style="margin-bottom: 15px;">
+                        <label style="font-weight: bold; color: #444; font-size: 0.9em;">Código Interno Empresa:</label>
+                        <input type="text" id="nuevo-eq-codigo" placeholder="Ej: ING-001" class="form-control">
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <label style="font-weight: bold; color: #444; font-size: 0.9em;">Marca:</label>
+                        <input type="text" id="nuevo-eq-marca" placeholder="Ej: Makita" class="form-control">
+                    </div>
                 </div>
+
+                <div style="display: flex; gap: 15px; margin-bottom: 15px;">
+                    <div style="flex: 1;">
+                       <label style="font-weight: bold; color: #444; font-size: 0.9em;">Número de Serie:</label>
+                       <input type="text" id="creador-serie" placeholder="Ej: SN-987654321" class="form-control">
+                    </div>
+                    <div style="flex: 1;">
+                        <label style="font-weight: bold; color: #444; font-size: 0.9em;">Ubicación:</label>
+                        <input type="text" id="creador-ubicacion" placeholder="Ej: Bodega" class="form-control">
+                    </div>
+                </div>
+
+                <h4 style="margin-top:0; color:#0056b3;">2. Pauta de Inspección (Checklist)</h4>
+                <div id="lista-tareas"></div>
+                <div id="contenedor-nuevas-tareas"></div>
+                <button onclick="agregarFilaTarea()" style="width:100%; background:#0056b3; color:white; border:none; padding:10px; border-radius:4px; cursor:pointer; font-weight:bold; margin-bottom:10px;">+ Añadir Punto a Revisar</button>
 
                 <div style="background:#f8f9fa; padding:15px; border-radius:8px; margin-bottom:15px; border: 1px solid #ccc;">
                     <h4 style="margin-top:0; color:#333;">3. Manual Técnico e Instrucciones</h4>
                     <p style="font-size:0.85em; color:#666; margin-top:0;">Pega aquí las instrucciones o advertencias del manual. Sepáralas presionando "Enter".</p>
-                    <textarea id="nuevo-eq-instrucciones" class="form-control" style="height:120px;" placeholder="1. MANTENIMIENTO&#10;• Limpiar el equipo después de cada uso.&#10;2. SEGURIDAD&#10;• Usar protección ocular en todo momento."></textarea>
+                    <textarea id="nuevo-eq-instrucciones" class="form-control" style="height:120px;" placeholder="1. MANTENIMIENTO • Limpiar el equipo después de cada uso.2. SEGURIDAD• Usar protección ocular en todo momento."></textarea>
                 </div>
 
                 <div style="display: flex; gap: 10px;">
                     <button id="btn-cancelar-creador" onclick="cancelarEdicionCreador()" style="display:none; flex:1; background:#6c757d; color:white; border:none; padding:15px; border-radius:6px; cursor:pointer; font-size:1.1em; font-weight:bold;">❌ Cancelar</button>
                     <button id="btn-guardar-creador" onclick="guardarNuevoEquipo()" style="flex:2; background:#28a745; color:white; border:none; padding:15px; border-radius:6px; cursor:pointer; font-size:1.1em; font-weight:bold; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">☁️ Guardar en la Nube</button>
                 </div>
-            </div>
+            </div> 
 
             <div class="card">
                 <h3 style="margin-top:0;">Equipos Existentes en el Sistema</h3>
@@ -284,8 +310,6 @@
                 <button onclick="restaurarBaseOriginal()" style="width:100%; padding:10px; margin-top:20px; background:#6c757d; color:white; border:none; border-radius:6px; cursor:pointer;">Restaurar Máquinas por Defecto (Fábrica)</button>
             </div>
         </div>
-
-    </div>
 
     <!-- MODAL DE REPARACIÓN INDIVIDUAL -->
     <div id="modal-reparacion" class="modal-overlay">
@@ -586,8 +610,9 @@
                 document.getElementById('app-view').style.display = 'block';
                 inicializarSelectorMaquinas();
             } else {
-                if(document.getElementById('btn-historial').classList.contains('active')) cargarHistorial();
-                if(document.getElementById('btn-creador').classList.contains('active')) listarEquiposEnCreador();
+                let menu = document.getElementById('menu-navegacion-principal');
+                if(menu && menu.value === 'historial') cargarHistorial();
+                if(menu && menu.value === 'creador') listarEquiposEnCreador();
             }
         }, (error) => {
             alert("Error de conexión con la nube. Asegúrate de tener las Reglas de Firebase en TRUE.");
@@ -611,6 +636,7 @@
             }
         }
         cargarDatosMaquina();
+		actualizarEstadoEquiposGeneral();
     }
 
     function initCanvases() {
@@ -671,7 +697,63 @@
         document.getElementById('lbl-firma-supervisor').innerText = sup ? `Firma Supervisor: ${sup}` : "Firma Supervisor";
     }
 
-    function cargarDatosMaquina() {
+    function filtrarSelectorMaquinas() {
+        let textoBuscado = document.getElementById('buscador-maquina').value.toLowerCase().trim();
+        let selector = document.getElementById('selector-maquina');
+        let valorActual = selector.value; 
+        
+        selector.innerHTML = ""; 
+        let hayResultados = false;
+        let coincidencias = 0;
+
+        for (const maq in baseDeDatos) {
+            let datosBase = baseDeDatos[maq];
+            
+            let nombreMaq = maq.toLowerCase();
+            let codigo = (datosBase.meta && datosBase.meta.codigo) ? datosBase.meta.codigo.toLowerCase() : "";
+            let marca = (datosBase.meta && datosBase.meta.marca) ? datosBase.meta.marca.toLowerCase() : "";
+            let modelo = (datosBase.meta && datosBase.meta.modelo) ? datosBase.meta.modelo.toLowerCase() : "";
+            
+            if (nombreMaq.includes(textoBuscado) || codigo.includes(textoBuscado) || marca.includes(textoBuscado) || modelo.includes(textoBuscado)) {
+                const option = document.createElement('option');
+                option.value = maq;
+                option.innerText = maq;
+                selector.appendChild(option);
+                hayResultados = true;
+                coincidencias++;
+            }
+        }
+
+        if (hayResultados) {
+            if (textoBuscado !== "") {
+                // Si escribió algo, agregamos un mensaje inicial para obligarlo a abrir la lista
+                const placeholder = document.createElement('option');
+                placeholder.value = "";
+                placeholder.innerText = "👉 " + coincidencias + " equipos encontrados. Haga clic aquí para elegir...";
+                placeholder.selected = true;
+                selector.insertBefore(placeholder, selector.firstChild);
+                
+                // Limpiamos la pantalla y le indicamos que debe elegir uno
+                document.getElementById('info-tecnica-equipo').innerHTML = "<" + "div style='background:#e9f2fb; padding:15px; border-radius:6px; border-left:4px solid #0056b3; font-weight:bold; color:#004085;'>☝️ Abra la lista desplegable de arriba y seleccione el equipo que necesita.<" + "/div>";
+                const listaTareas = document.getElementById('lista-tareas');
+                if (listaTareas) listaTareas.innerHTML = "";
+            } else {
+                // Si borró la búsqueda (barra vacía), volvemos a la normalidad
+                let opcionesActuales = Array.from(selector.options).map(opt => opt.value);
+                if (opcionesActuales.includes(valorActual) && valorActual !== "") {
+                    selector.value = valorActual;
+                }
+                cargarDatosMaquina();
+            }
+        } else {
+            // Si no hay nada que coincida
+            document.getElementById('info-tecnica-equipo').innerHTML = "<" + "p style='color:#dc3545; font-weight:bold; padding: 15px; background: #f8d7da; border-radius: 6px; border: 1px solid #f5c6cb;'>❌ No se encontraron equipos con esa marca, modelo, código o nombre.<" + "/p>";
+            const listaTareas = document.getElementById('lista-tareas');
+            if (listaTareas) listaTareas.innerHTML = "";
+        }
+    }
+
+	function cargarDatosMaquina() {
         const selector = document.getElementById('selector-maquina');
         if(!selector.value) return;
         maquinaActual = selector.value;
@@ -681,9 +763,9 @@
         
         document.getElementById('info-tecnica-equipo').innerHTML = `
             <table class="tabla-tecnica">
-                <tr><td class="td-bg">Código Equipo:</td><td><strong>${datos.meta.codigo}</strong></td><td class="td-bg">Marca:</td><td><strong>${datos.meta.marca}</strong></td><td class="td-bg">Modelo:</td><td><strong>${datos.meta.modelo}</strong></td></tr>
+                <tr><td class="td-bg">Código interno:</td><td><strong>${datos.meta.codigo}</strong></td><td class="td-bg">Marca:</td><td><strong>${datos.meta.marca}</strong></td><td class="td-bg">Modelo:</td><td><strong>${datos.meta.modelo}</strong></td></tr>
                 <tr><td class="td-bg">Potencia:</td><td>${datos.meta.potencia}</td><td class="td-bg">Tensión / Freq:</td><td>${datos.meta.tension}</td><td class="td-bg">Accesorio:</td><td>${datos.meta.diametro}</td></tr>
-                <tr><td class="td-bg">Velocidad:</td><td colspan="5">${datos.meta.velocidad}</td></tr>
+                <tr><td class="td-bg">N° de Serie:</td><td><strong>${datos.meta.serie || "S/N"}</strong></td><td class="td-bg">Ubicación:</td><td><strong>${datos.meta.ubicacion || "Sin ubicación"}</strong></td><td class="td-bg">Velocidad:</td><td>${datos.meta.velocidad || "-"}</td></tr>
             </table>
         `;
         
@@ -691,16 +773,34 @@
         let disabledPointer = isEditing ? 'style="pointer-events:none; opacity:0.6;"' : '';
         let disabledInput = isEditing ? 'readonly style="background:#e9ecef;"' : '';
 
+        // 1. Llenar el Código de Empresa siempre
+        let inpCodigo = document.getElementById('ctrl-codigo-inspeccion');
+        if (inpCodigo) inpCodigo.value = (datos.meta && datos.meta.codigo) ? datos.meta.codigo : "S/N";
+
+        // 2. Llenar Serie, Ubicación y Fecha (solo si es inspección nueva)
         if(!isEditing) {
-            document.getElementById('ctrl-serie').value = datos.meta.serie ? datos.meta.serie : (estado.serie || "");
-            document.getElementById('ctrl-ubicacion').value = estado.ubicacion || "";
-            document.getElementById('ctrl-fecha').valueAsDate = new Date();
-            document.getElementById('ctrl-horas-edit').value = estado.horas;
+            let inpSerie = document.getElementById('ctrl-serie');
+            if (inpSerie) inpSerie.value = (datos.meta && datos.meta.serie) ? datos.meta.serie : "S/N";
+            
+            let inpUbicacion = document.getElementById('ctrl-ubicacion');
+            if (inpUbicacion) inpUbicacion.value = (datos.meta && datos.meta.ubicacion) ? datos.meta.ubicacion : "Sin ubicación";
+            
+            let inpFecha = document.getElementById('ctrl-fecha');
+            if (inpFecha) inpFecha.valueAsDate = new Date();
+            
+            let inpHoras = document.getElementById('ctrl-horas-edit');
+            if (inpHoras) inpHoras.value = estado.horas || 0;
+            
             if(canvases.tecnico.ctx) limpiarFirma('tecnico');
             if(canvases.supervisor.ctx) limpiarFirma('supervisor');
         }
 
+        // 3. Escudo anti-caídas para el checklist
         const contenedorTareas = document.getElementById('lista-tareas');
+        if (!contenedorTareas) {
+            console.error("Falta el contenedor 'lista-tareas' en el HTML.");
+            return; // Detiene la función limpiamente sin romper el sistema
+        }
         contenedorTareas.innerHTML = ""; 
         registros = {}; 
 
@@ -769,20 +869,49 @@
 
     function actualizarHorometro(estado) {
         document.getElementById('horas-actuales').value = estado.horas + " hrs";
+        
+        let tieneInformes = historialInformes.some(function(inf) { return inf.maquina === maquinaActual; });
+        let alertaBoxHoras = document.getElementById('status-alerta');
+        let alertaBoxInspeccion = document.getElementById('alerta-inspeccion');
+
+        if (!tieneInformes) {
+            document.getElementById('fecha-ultimo-maint').value = "Sin registro previo";
+            let mensajeNuevo = "⚪ {strong}Equipo nuevo.{/strong} Aún no tiene inspecciones registradas.";
+            
+            alertaBoxHoras.className = "alert-box"; 
+            alertaBoxHoras.style.backgroundColor = "#e2e3e5";
+            alertaBoxHoras.style.color = "#383d41";
+            alertaBoxHoras.style.border = "1px solid #d6d8db";
+            alertaBoxHoras.innerHTML = mensajeNuevo;
+            
+            alertaBoxInspeccion.className = "alert-box";
+            alertaBoxInspeccion.style.backgroundColor = "#e2e3e5";
+            alertaBoxInspeccion.style.color = "#383d41";
+            alertaBoxInspeccion.style.border = "1px solid #d6d8db";
+            alertaBoxInspeccion.innerHTML = mensajeNuevo;
+            return;
+        }
+
+        alertaBoxHoras.style.backgroundColor = "";
+        alertaBoxHoras.style.color = "";
+        alertaBoxHoras.style.border = "";
+        alertaBoxInspeccion.style.backgroundColor = "";
+        alertaBoxInspeccion.style.color = "";
+        alertaBoxInspeccion.style.border = "";
+
         document.getElementById('fecha-ultimo-maint').value = new Date(estado.fechaUltimoMaint).toLocaleDateString('es-ES');
         
         let diasMaint = Math.floor((new Date() - new Date(estado.fechaUltimoMaint)) / (1000 * 60 * 60 * 24));
-        let alertaBoxHoras = document.getElementById('status-alerta');
-        let alertaBoxInspeccion = document.getElementById('alerta-inspeccion');
+        if (diasMaint < 0) diasMaint = 0;
         
         let mensaje = "";
         let esPeligro = false;
 
         if (estado.horas >= 35 || diasMaint >= 75) { 
             esPeligro = true;
-            mensaje = `⚠️ ¡ATENCIÓN! Mantenimiento próximo requerido.<br>Horas: ${estado.horas}/40 hrs | Días transcurridos: ${diasMaint}/90 días.`;
+            mensaje = "⚠️ ¡ATENCIÓN! Mantenimiento próximo requerido.{br}Horas: " + estado.horas + "/40 hrs | Días transcurridos: " + diasMaint + "/90 días.";
         } else {
-            mensaje = `✅ Estado óptimo. Horas: ${estado.horas}/40 hrs | Días transcurridos: ${diasMaint}/90 días.`;
+            mensaje = "✅ Estado óptimo. Horas: " + estado.horas + "/40 hrs | Días transcurridos: " + diasMaint + "/90 días.";
         }
 
         alertaBoxHoras.className = esPeligro ? "alert-box alert-danger" : "alert-box alert-success";
@@ -849,36 +978,42 @@
         if(!eq) return;
 
         equipoEnEdicion = nombreOriginal; 
-        
+    
         document.getElementById('nuevo-eq-id').value = nombreOriginal;
         document.getElementById('nuevo-eq-codigo').value = eq.meta.codigo || "";
         document.getElementById('nuevo-eq-marca').value = eq.meta.marca || "";
         document.getElementById('nuevo-eq-modelo').value = eq.meta.modelo || "";
         document.getElementById('nuevo-eq-potencia').value = eq.meta.potencia || "";
-        
+    
+        // Extraemos Serie y Ubicación de la base de datos al editar
+        let inputSerie = document.getElementById('creador-serie');
+        if(inputSerie) inputSerie.value = eq.meta.serie || "";
+    
+        let inputUbicacion = document.getElementById('creador-ubicacion');
+        if(inputUbicacion) inputUbicacion.value = eq.meta.ubicacion || "";
+    
         document.getElementById('nuevo-eq-instrucciones').value = (eq.instrucciones || []).join('\n');
-        
+    
         const contenedor = document.getElementById('contenedor-nuevas-tareas');
         contenedor.innerHTML = "";
         contadorNuevasTareas = 0;
-        
+    
         eq.pauta.forEach(tarea => {
             contadorNuevasTareas++;
             const div = document.createElement('div');
             div.className = 'nueva-tarea-item';
             div.style.cssText = "background:#fff; padding:10px; border:1px solid #ccc; margin-bottom:5px; border-radius:4px; border-left: 4px solid #0056b3;";
-            div.innerHTML = `
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
-                    <strong style="color:#0056b3;">Punto de Pauta #${contadorNuevasTareas}</strong>
-                    <button onclick="this.parentElement.parentElement.remove()" style="background:#dc3545; color:white; border:none; border-radius:4px; cursor:pointer; font-size:0.8em; padding:4px 8px;">X Quitar</button>
-                </div>
-                <input type="text" class="form-control t-nombre" placeholder="Nombre (Ej: Botón de Encendido)" value="${tarea.nombre}" style="margin-bottom:5px;">
-                <input type="text" class="form-control t-desc" placeholder="Instrucción de revisión" value="${tarea.desc}" style="margin-bottom:5px;">
-                <input type="text" class="form-control t-frec" placeholder="Frecuencia" value="${tarea.frecuencia}">
-            `;
+            div.innerHTML = "<" + "div style='display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;'>" +
+                "<" + "strong style='color:#0056b3;'>Punto de Pauta #" + contadorNuevasTareas + "<" + "/strong>" +
+                "<" + "button onclick='this.parentElement.parentElement.remove()' style='background:#dc3545; color:white; border:none; border-radius:4px; cursor:pointer; font-size:0.8em; padding:4px 8px;'>X Quitar<" + "/button>" +
+            "<" + "/div>" +
+            "<" + "input type='text' class='form-control t-nombre' placeholder='Nombre (Ej: Botón de Encendido)' value='" + tarea.nombre + "' style='margin-bottom:5px;'>" +
+            "<" + "input type='text' class='form-control t-desc' placeholder='Instrucción de revisión' value='" + tarea.desc + "' style='margin-bottom:5px;'>" +
+            "<" + "input type='text' class='form-control t-frec' placeholder='Frecuencia' value='" + tarea.frecuencia + "'>";
+        
             contenedor.appendChild(div);
         });
-        
+    
         document.getElementById('btn-guardar-creador').innerText = "🔄 Actualizar en la Nube";
         document.getElementById('btn-cancelar-creador').style.display = "block";
         window.scrollTo(0, 0);
@@ -891,10 +1026,15 @@
         document.getElementById('nuevo-eq-marca').value = "";
         document.getElementById('nuevo-eq-modelo').value = "";
         document.getElementById('nuevo-eq-potencia').value = "";
+    
+        // Limpiamos las nuevas casillas
+        if(document.getElementById('creador-serie')) document.getElementById('creador-serie').value = "";
+        if(document.getElementById('creador-ubicacion')) document.getElementById('creador-ubicacion').value = "";
+    
         document.getElementById('contenedor-nuevas-tareas').innerHTML = "";
         document.getElementById('nuevo-eq-instrucciones').value = "";
         contadorNuevasTareas = 0;
-        
+    
         document.getElementById('btn-guardar-creador').innerText = "☁️ Guardar en la Nube";
         document.getElementById('btn-cancelar-creador').style.display = "none";
     }
@@ -903,25 +1043,36 @@
         let idNombreRaw = document.getElementById('nuevo-eq-id').value.trim().toUpperCase();
         if(!idNombreRaw) return alert("Debe ingresar el Nombre Principal de la máquina.");
 
-        let idNombre = limpiarLlaveFirebase(idNombreRaw); // Sanea el nombre para Firebase
+        let idNombre = limpiarLlaveFirebase(idNombreRaw); 
 
         if(equipoEnEdicion && equipoEnEdicion !== idNombre) {
-            delete baseDeDatos[equipoEnEdicion]; 
+           delete baseDeDatos[equipoEnEdicion]; 
         }
+
+        // AQUI ESTABA EL ERROR: Ahora el script lee estrictamente las casillas del CREADOR
+        let inputCodigo = document.getElementById('nuevo-eq-codigo');
+        let inputMarca = document.getElementById('nuevo-eq-marca');
+        let inputModelo = document.getElementById('nuevo-eq-modelo');
+        let inputPotencia = document.getElementById('nuevo-eq-potencia');
+        let inputSerie = document.getElementById('creador-serie');
+        let inputUbicacion = document.getElementById('creador-ubicacion');
 
         let meta = {
             tipo: "Herramienta Agregada",
-            codigo: document.getElementById('nuevo-eq-codigo').value || "S/N",
-            marca: document.getElementById('nuevo-eq-marca').value || "-",
-            modelo: document.getElementById('nuevo-eq-modelo').value || "-",
-            potencia: document.getElementById('nuevo-eq-potencia').value || "-",
-            serie: "", tension: "", diametro: "", velocidad: ""
+            codigo: inputCodigo ? inputCodigo.value : "S/N",
+            marca: inputMarca ? inputMarca.value : "-",
+            modelo: inputModelo ? inputModelo.value : "-",
+            potencia: inputPotencia ? inputPotencia.value : "-",
+            serie: inputSerie ? inputSerie.value : "",
+            ubicacion: inputUbicacion ? inputUbicacion.value : "",
+            tension: "", diametro: "", velocidad: ""
         };
 
         let pauta = [];
-        let items = document.querySelectorAll('.nueva-tarea-item');
+        let tabCreador = document.getElementById('tab-creador');
+        let items = tabCreador.querySelectorAll('.nueva-tarea-item');
         let index = 1;
-        
+    
         items.forEach(item => {
             let n = item.querySelector('.t-nombre').value.trim();
             let d = item.querySelector('.t-desc').value.trim();
@@ -943,27 +1094,88 @@
         };
 
         db.ref('baseDeDatos').set(baseDeDatos);
-        
-        alert(`✅ Equipo "${idNombre}" guardado exitosamente en la nube.`);
-        
+    
+        alert("✅ Equipo guardado exitosamente en la nube.");
+    
         cancelarEdicionCreador();
         inicializarSelectorMaquinas();
         listarEquiposEnCreador();
+    }
+
+    function editarEquipoCreador(nombreOriginal) {
+        const eq = baseDeDatos[nombreOriginal];
+        if(!eq) return;
+
+        equipoEnEdicion = nombreOriginal; 
+    
+        document.getElementById('nuevo-eq-id').value = nombreOriginal;
+        
+        let inpCodigo = document.getElementById('nuevo-eq-codigo');
+        if(inpCodigo) inpCodigo.value = eq.meta.codigo || "";
+        
+        let inpMarca = document.getElementById('nuevo-eq-marca');
+        if(inpMarca) inpMarca.value = eq.meta.marca || "";
+        
+        let inpModelo = document.getElementById('nuevo-eq-modelo');
+        if(inpModelo) inpModelo.value = eq.meta.modelo || "";
+        
+        let inpPotencia = document.getElementById('nuevo-eq-potencia');
+        if(inpPotencia) inpPotencia.value = eq.meta.potencia || "";
+    
+        // AQUI TAMBIEN: Enviamos los datos para editar a las casillas del CREADOR
+        let inputSerie = document.getElementById('creador-serie');
+        if(inputSerie) inputSerie.value = eq.meta.serie || "";
+    
+        let inputUbicacion = document.getElementById('creador-ubicacion');
+        if(inputUbicacion) inputUbicacion.value = eq.meta.ubicacion || "";
+    
+        document.getElementById('nuevo-eq-instrucciones').value = (eq.instrucciones || []).join('\n');
+    
+        const contenedor = document.getElementById('contenedor-nuevas-tareas');
+        contenedor.innerHTML = "";
+        contadorNuevasTareas = 0;
+    
+        eq.pauta.forEach(tarea => {
+            contadorNuevasTareas++;
+            const div = document.createElement('div');
+            div.className = 'nueva-tarea-item';
+            div.style.cssText = "background:#fff; padding:10px; border:1px solid #ccc; margin-bottom:5px; border-radius:4px; border-left: 4px solid #0056b3;";
+            div.innerHTML = "<" + "div style='display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;'>" +
+                "<" + "strong style='color:#0056b3;'>Punto de Pauta #" + contadorNuevasTareas + "<" + "/strong>" +
+                "<" + "button onclick='this.parentElement.parentElement.remove()' style='background:#dc3545; color:white; border:none; border-radius:4px; cursor:pointer; font-size:0.8em; padding:4px 8px;'>X Quitar<" + "/button>" +
+            "<" + "/div>" +
+            "<" + "input type='text' class='form-control t-nombre' placeholder='Nombre' value='" + tarea.nombre + "' style='margin-bottom:5px;'>" +
+            "<" + "input type='text' class='form-control t-desc' placeholder='Instrucción' value='" + tarea.desc + "' style='margin-bottom:5px;'>" +
+            "<" + "input type='text' class='form-control t-frec' placeholder='Frecuencia' value='" + tarea.frecuencia + "'>";
+        
+            contenedor.appendChild(div);
+        });
+    
+        document.getElementById('btn-guardar-creador').innerText = "🔄 Actualizar en la Nube";
+        document.getElementById('btn-cancelar-creador').style.display = "block";
+        window.scrollTo(0, 0);
     }
 
     function listarEquiposEnCreador() {
         const contenedor = document.getElementById('lista-equipos-sistema');
         contenedor.innerHTML = "";
         for (const maq in baseDeDatos) {
-            contenedor.innerHTML += `
-                <div style="display:flex; justify-content:space-between; align-items:center; background:white; padding:10px; border-radius:4px; border:1px solid #ddd; margin-bottom:5px;">
-                    <strong style="flex:1;">${maq}</strong>
-                    <div style="display:flex; gap:5px;">
-                        <button onclick="editarEquipoCreador('${maq}')" style="background:#ffc107; color:#212529; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; font-weight:bold;">✏️ Editar</button>
-                        <button onclick="borrarEquipo('${maq}')" style="background:#dc3545; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; font-weight:bold;">🗑️ Borrar</button>
-                    </div>
-                </div>
-            `;
+            let datosBase = baseDeDatos[maq];
+            let codigoEmpresa = (datosBase && datosBase.meta && datosBase.meta.codigo) ? datosBase.meta.codigo : "S/N";
+
+            // Convierte las comillas conflictivas (como las de 10") en un código seguro para evitar errores en los botones
+            let maqSeguro = maq.replace(/'/g, "\\x27").replace(/"/g, "\\x22");
+
+            contenedor.innerHTML += "<" + "div style='display:flex; justify-content:space-between; align-items:center; background:white; padding:10px; border-radius:4px; border:1px solid #ddd; margin-bottom:5px;'>" +
+                "<" + "div style='flex:1;'>" +
+                    "<" + "strong style='font-size: 1.1em;'>" + maq + "<" + "/strong><" + "br>" +
+                    "<" + "span style='color:#0056b3; font-size:0.85em; font-weight:bold;'>Código: " + codigoEmpresa + "<" + "/span>" +
+                "<" + "/div>" +
+                "<" + "div style='display:flex; gap:5px;'>" +
+                    "<" + "button onclick=\"editarEquipoCreador('" + maqSeguro + "')\" style='background:#ffc107; color:#212529; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; font-weight:bold;'>✏️ Editar<" + "/button>" +
+                    "<" + "button onclick=\"borrarEquipo('" + maqSeguro + "')\" style='background:#dc3545; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; font-weight:bold;'>🗑️ Borrar<" + "/button>" +
+                "<" + "/div>" +
+            "<" + "/div>";
         }
     }
 
@@ -985,7 +1197,7 @@
         }
     }
 
-   // --- FUNCIONES DE DESCARGA PDF ---
+    // --- FUNCIONES DE DESCARGA PDF ---
     function descargarPDFDirecto(seccionId, nombreArchivo) {
         if (typeof html2pdf === 'undefined') {
             alert("No se pudo cargar el motor de PDF.");
@@ -1042,11 +1254,27 @@
     function generarYGuardarInforme() {
         const meta = baseDeDatos[maquinaActual].meta;
         const fechaInp = document.getElementById('ctrl-fecha').value;
-        const tecnico = document.getElementById('ctrl-tecnico').value || "No especificado";
-        const supervisor = document.getElementById('ctrl-supervisor').value || "No especificado";
-        const serie = document.getElementById('ctrl-serie').value || "S/N";
-        const ubicacion = document.getElementById('ctrl-ubicacion').value || "Taller Principal";
-        const horasReporte = document.getElementById('ctrl-horas-edit').value || 0; 
+        const tecnico = document.getElementById('ctrl-tecnico').value.trim();
+        const supervisor = document.getElementById('ctrl-supervisor').value.trim();
+        const serie = document.getElementById('ctrl-serie').value.trim();
+        const ubicacion = document.getElementById('ctrl-ubicacion').value.trim();
+        const horasReporte = document.getElementById('ctrl-horas-edit').value; 
+
+        let firmaTec = isCanvasEmpty(canvases.tecnico.el) ? null : canvases.tecnico.el.toDataURL();
+        let firmaSup = isCanvasEmpty(canvases.supervisor.el) ? null : canvases.supervisor.el.toDataURL();
+        
+        if(informeEditandoId) {
+            let infAntiguo = historialInformes.find(i => i.id === informeEditandoId);
+            if(infAntiguo) {
+                if(!firmaTec && infAntiguo.firmaTecnico) firmaTec = infAntiguo.firmaTecnico;
+                if(!firmaSup && infAntiguo.firmaSupervisor) firmaSup = infAntiguo.firmaSupervisor;
+            }
+        }
+
+        if (!fechaInp || !tecnico || !supervisor || !serie || !ubicacion || horasReporte === "" || !firmaTec) {
+            alert("⚠️ Faltan datos obligatorios. Complete todos los campos de texto y asegúrese de ingresar la FIRMA DEL TÉCNICO.");
+            return; 
+        }
         
         let fechaBase = fechaInp ? new Date(fechaInp + "T00:00:00") : new Date();
 
@@ -1092,17 +1320,6 @@
             });
         });
 
-        let firmaTec = isCanvasEmpty(canvases.tecnico.el) ? null : canvases.tecnico.el.toDataURL();
-        let firmaSup = isCanvasEmpty(canvases.supervisor.el) ? null : canvases.supervisor.el.toDataURL();
-        
-        if(informeEditandoId) {
-            let infAntiguo = historialInformes.find(i => i.id === informeEditandoId);
-            if(infAntiguo) {
-                if(!firmaTec && infAntiguo.firmaTecnico) firmaTec = infAntiguo.firmaTecnico;
-                if(!firmaSup && infAntiguo.firmaSupervisor) firmaSup = infAntiguo.firmaSupervisor;
-            }
-        }
-
         const informeData = {
             id: informeEditandoId ? informeEditandoId : Date.now(),
             fecha: fechaBase.toISOString(),
@@ -1118,7 +1335,7 @@
             tareas: tareasReporte
         };
 
-        informeData.estado = calcularEstadoGlobal(tareasReporte);
+        informeData.estado = calcularEstadoGlobal(tareasReporte, firmaSup);
 
         if (informeEditandoId) {
             let index = historialInformes.findIndex(i => i.id === informeEditandoId);
@@ -1140,10 +1357,19 @@
         document.getElementById('btn-cancelar-edicion').style.display = "none";
         document.getElementById('selector-maquina').disabled = false;
 
-        alert("✅ Informe y Checklist guardados exitosamente en la nube corporativa.");
+        if (!firmaSup) {
+            alert("⚠️ Informe guardado temporalmente. Falta la firma de Eduardo Núñez o José Tapia para finalizarlo.");
+            if(confirm("¿Deseas enviarles un WhatsApp ahora para avisarles que deben revisarlo y firmarlo?")) {
+                let msj = `Hola! He terminado la inspección técnica de la máquina ${maquinaActual}. Está guardada en el sistema esperando tu firma para finalizar el reporte.`;
+                window.open(`https://wa.me/?text=${encodeURIComponent(msj)}`, '_blank');
+            }
+            cambiarPestana('historial'); 
+            return; 
+        }
+
+        alert("✅ Informe y Checklist finalizados y guardados exitosamente.");
         renderizarPDF(informeData);
     }
-
     function renderizarPDF(informe) {
         let dateStr = new Date(informe.fecha).toISOString().split('T')[0];
         window.informeActualPDFName = `Informe_${informe.meta.codigo}_${dateStr}.pdf`;
@@ -1400,22 +1626,27 @@
         window.scrollTo(0, 0);
     }
 
-    function calcularEstadoGlobal(tareas) {
+    function calcularEstadoGlobal(tareas, firmaSup) {
         let tieneCriticosPendientes = tareas.some(t => t.estadoOriginal === 'Malo' && !t.reparado);
         let tieneMenoresPendientes = tareas.some(t => t.estadoOriginal === 'Regular' && !t.reparado);
         let teniaFallas = tareas.some(t => t.estadoOriginal !== 'Bueno');
 
-        if (tieneCriticosPendientes) return "Rechazado (Peligro)";
-        if (tieneMenoresPendientes) return "Operativo con Pendientes";
-        if (teniaFallas) return "Reparado (Óptimo)";
-        return "Óptimo";
-    }
+        let estadoBase = "Óptimo";
+        if (tieneCriticosPendientes) estadoBase = "Rechazado (Peligro)";
+        else if (tieneMenoresPendientes) estadoBase = "Operativo con Pendientes";
+        else if (teniaFallas) estadoBase = "Reparado (Óptimo)";
 
+        if (!firmaSup) {
+            return "Pendiente Firma Supervisor";
+        }
+        return estadoBase;
+    }
+	
     function cargarHistorial() {
         const contenedor = document.getElementById('lista-historial');
         
         if(historialInformes.length === 0) {
-            contenedor.innerHTML = "<p>No hay informes guardados todavía en la nube.</p>";
+            contenedor.innerHTML = "<" + "p>No hay informes guardados todavia en la nube.<" + "/p>";
             return;
         }
 
@@ -1424,38 +1655,78 @@
             const div = document.createElement('div');
             div.className = "historial-item";
             
-            let colorBg = (informe.estado === "Óptimo" || informe.estado === "Reparado (Óptimo)") ? "#d4edda" : (informe.estado === "Operativo con Pendientes" ? "#fff3cd" : "#f8d7da");
-            let colorText = (informe.estado === "Óptimo" || informe.estado === "Reparado (Óptimo)") ? "#155724" : (informe.estado === "Operativo con Pendientes" ? "#856404" : "#721c24");
+            // Detectamos si es 100% antiguo (no tiene "tareas" guardadas)
+            let esMuyAntiguo = !informe.tareas;
             
-            let necesitaReparar = informe.estado.includes("Rechazado") || informe.estado.includes("Pendientes");
-            let botonReparar = necesitaReparar && informe.tareas
-                ? `<button class="btn-reparar" onclick="abrirModalReparacion(${informe.id})">🔧 Registrar Reparación</button>` 
-                : "";
+            let colorBg = "#f8f9fa";
+            let colorText = "#333";
+            let estadoTexto = informe.estado;
+
+            if (esMuyAntiguo) {
+                // Etiqueta visual para los realmente viejos
+                colorBg = "#e2e3e5";
+                colorText = "#383d41";
+                estadoTexto = "⚠️ Formato Antiguo";
+            } else {
+                if (informe.estado === "Óptimo" || informe.estado === "Reparado (Óptimo)") { colorBg = "#d4edda"; colorText = "#155724"; }
+                else if (informe.estado === "Operativo con Pendientes") { colorBg = "#fff3cd"; colorText = "#856404"; }
+                else if (informe.estado === "Rechazado (Peligro)") { colorBg = "#f8d7da"; colorText = "#721c24"; }
+                else if (informe.estado === "Pendiente Firma Supervisor") { colorBg = "#cce5ff"; colorText = "#004085"; }
+            }
             
-            let botonRepuestos = necesitaReparar && informe.tareas
-                ? `<button class="btn-repuestos" onclick="abrirModalRepuestos(${informe.id})">🛒 Solicitar Repuestos</button>` 
-                : "";
+            let htmlBotonesDerecha = "";
 
-            let divBotonesEdicion = informe.tareas 
-                ? `<div style="display: flex; gap: 5px; margin-bottom: 5px;">
-                        <button class="btn-ver" style="background:#ffc107; color:#212529; flex:1; margin-top:0;" onclick="editarReporte(${informe.id})" title="Editar Pauta">✏️ Editar</button>
-                        <button class="btn-ver" style="background:#dc3545; flex:1; margin-top:0;" onclick="eliminarReporte(${informe.id})" title="Borrar Informe">🗑️ Borrar</button>
-                   </div>` 
-                : `<button class="btn-ver" style="background:#dc3545; width:100%; margin-top:0; margin-bottom: 5px;" onclick="eliminarReporte(${informe.id})" title="Borrar Informe">🗑️ Borrar</button>`;
+            if (esMuyAntiguo) {
+                htmlBotonesDerecha = "<" + "button class='btn-ver' style='background:#17a2b8; color:white; width:100%; margin-top:0; margin-bottom: 5px;' onclick='migrarInformeAntiguo(" + informe.id + ")' title='Actualizar informe'>🔄 Migrar a Nuevo<" + "/button>" +
+                    "<" + "button class='btn-ver' style='background:#dc3545; width:100%; margin-top:0;' onclick='eliminarReporte(" + informe.id + ")'>🗑️ Borrar<" + "/button>";
+            } else {
+                let necesitaReparar = informe.estado.includes("Rechazado") || informe.estado.includes("Pendientes");
+                
+                let botonReparar = "";
+                if (necesitaReparar && informe.tareas) {
+                    botonReparar = "<" + "button class='btn-reparar' onclick='abrirModalReparacion(" + informe.id + ")'>🔧 Registrar Reparación<" + "/button>";
+                }
+                
+                let botonRepuestos = "";
+                if (necesitaReparar && informe.tareas) {
+                    botonRepuestos = "<" + "button class='btn-repuestos' onclick='abrirModalRepuestos(" + informe.id + ")'>🛒 Solicitar Repuestos<" + "/button>";
+                }
 
-            div.innerHTML = `
-                <div style="flex:1;">
-                    <strong>${new Date(informe.fecha).toLocaleDateString('es-CL')} - ${informe.maquina}</strong><br>
-                    <span style="font-size:0.85em; color:#666;">Insp: ${informe.inspector}</span><br>
-                    <span style="display:inline-block; margin-top:5px; padding:3px 8px; border-radius:4px; font-size:0.85em; font-weight:bold; background:${colorBg}; color:${colorText};">${informe.estado}</span>
-                </div>
-                <div style="display: flex; flex-direction: column; width: 170px; text-align: right;">
-                    ${botonReparar}
-                    ${botonRepuestos}
-                    ${divBotonesEdicion}
-                    <button class="btn-ver" style="margin-top:0;" onclick="verReporteAntiguo(${informe.id})">📄 Abrir Informe</button>
-                </div>
-            `;
+                // NUEVA LÓGICA: Si le falta firma al supervisor físicamente en la base de datos, mostramos el botón de editar
+                let leFaltaFirmaSup = !informe.firmaSupervisor;
+                let leFaltaFirmaTec = !informe.firmaTecnico;
+                
+                if (leFaltaFirmaSup || leFaltaFirmaTec) {
+                    estadoTexto = "⚠️ Falta Firma (" + informe.estado + ")";
+                    colorBg = "#cce5ff"; 
+                    colorText = "#004085";
+                }
+
+                let divBotonesEdicion = "<" + "button class='btn-ver' style='background:#dc3545; width:100%; margin-top:0; margin-bottom: 5px;' onclick='eliminarReporte(" + informe.id + ")'>🗑️ Borrar<" + "/button>";
+
+                if (leFaltaFirmaSup || leFaltaFirmaTec || informe.estado === "Pendiente Firma Supervisor") {
+                    divBotonesEdicion = "<" + "div style='display: flex; gap: 5px; margin-bottom: 5px;'>" +
+                        "<" + "button class='btn-ver' style='background:#ffc107; color:#212529; flex:1; margin-top:0;' onclick='editarReporte(" + informe.id + ")'>✍️ Ingresar Firma<" + "/button>" +
+                        "<" + "button class='btn-ver' style='background:#dc3545; flex:1; margin-top:0;' onclick='eliminarReporte(" + informe.id + ")'>🗑️ Borrar<" + "/button>" +
+                    "<" + "/div>";
+                }
+                
+                htmlBotonesDerecha = botonReparar + botonRepuestos + divBotonesEdicion + 
+                    "<" + "button class='btn-ver' style='margin-top:0;' onclick='verReporteAntiguo(" + informe.id + ")'>📄 Abrir Informe<" + "/button>";
+            }
+
+            let fechaFormateada = new Date(informe.fecha).toLocaleDateString('es-CL');
+
+            div.innerHTML = "<" + "div style='flex:1;'>" +
+                "<" + "strong>" + fechaFormateada + " - " + informe.maquina + "<" + "/strong><" + "br>" +
+                "<" + "span style='font-size:0.85em; color:#0056b3; font-weight:bold;'>Código: " + (informe.codigoInterno || "S/N") + "<" + "/span><" + "br>" +
+                "<" + "span style='font-size:0.85em; color:#666;'>Insp: " + informe.inspector + "<" + "/span><" + "br>" +
+                "<" + "span style='display:inline-block; margin-top:5px; padding:3px 8px; border-radius:4px; font-size:0.85em; font-weight:bold; background:" + colorBg + "; color:" + colorText + ";'>" + estadoTexto + "<" + "/span>" +
+            "<" + "/div>" +
+            "<" + "div style='display: flex; flex-direction: column; width: 170px; text-align: right;'>" +
+                htmlBotonesDerecha +
+            "<" + "/div>";
+                
             contenedor.appendChild(div);
         });
     }
@@ -1526,27 +1797,30 @@
     function abrirModalReparacion(id) {
         informeParaRepararId = id;
         const informe = historialInformes.find(i => i.id === id);
-        
-        const contenedorList = document.getElementById('lista-pendientes-modal');
-        contenedorList.innerHTML = "";
+        if(!informe) return;
 
         let pendientes = informe.tareas.filter(t => t.estadoOriginal !== 'Bueno' && !t.reparado);
+        const listaHTML = document.getElementById('lista-pendientes-modal');
         
+        // Agregamos el campo obligatorio para el Nombre del Tecnico
+        let htmlContent = "<" + "div style='margin-bottom: 15px; text-align: left;'>" +
+            "<" + "label style='font-weight: bold; color: #dc3545;'>* Nombre del Tecnico que repara:<" + "/label>" +
+            "<" + "input type='text' id='nombre-tecnico-repara' placeholder='Ej: Juan Pérez' style='width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px;'>" +
+        "<" + "/div>";
+
         pendientes.forEach(t => {
-            let claseG = t.estadoOriginal === 'Malo' ? 'rep-item critico' : 'rep-item';
-            
-            contenedorList.innerHTML += `
-                <div class="${claseG}">
-                    <label style="font-weight:bold; display:block; margin-bottom:5px; cursor:pointer;">
-                        <input type="checkbox" class="check-rep" data-id="${t.id}" style="width:18px; height:18px; vertical-align:middle; margin-right:8px;">
-                        <span style="vertical-align:middle;">[${t.estadoOriginal.toUpperCase()}] ${t.nombre}</span>
-                    </label>
-                    <p style="font-size:0.85em; margin:5px 0 10px 0; color:#555; padding-left:25px;"><strong>Falla:</strong> ${t.obs || "Sin observaciones"}</p>
-                    <input type="text" class="form-control nota-rep" id="nota-rep-${t.id}" placeholder="¿Qué acción realizó para repararlo? (Opcional)" style="margin-left:25px; width:calc(100% - 25px);">
-                </div>
-            `;
+            htmlContent += "<" + "div style='text-align:left; background:#f8f9fa; padding:10px; margin-bottom:10px; border-radius:5px; border-left:4px solid #ffc107;'>" +
+                "<" + "label style='display:flex; align-items:center; font-weight:bold; cursor:pointer;'>" +
+                    "<" + "input type='checkbox' class='check-rep' data-id='" + t.id + "' style='margin-right:10px; transform:scale(1.2);'>" + 
+                    " Marcar como Reparado" +
+                "<" + "/label>" +
+                "<" + "p style='margin:5px 0 0 0;'>Falla: " + t.nombre + " (" + t.estadoOriginal + ")<" + "/p>" +
+                "<" + "p style='margin:2px 0 5px 0; font-size:0.85em; color:#666;'>Detalle: " + t.obs + "<" + "/p>" +
+                "<" + "input type='text' id='nota-rep-" + t.id + "' placeholder='¿Qué se le hizo o cambió?' style='width:100%; padding:5px; margin-top:5px;'>" +
+            "<" + "/div>";
         });
 
+        listaHTML.innerHTML = htmlContent;
         document.getElementById('modal-reparacion').style.display = 'flex';
     }
 
@@ -1557,8 +1831,17 @@
 
     function guardarReparacionParcial() {
         let index = historialInformes.findIndex(i => i.id === informeParaRepararId);
-        
         if (index === -1) return;
+
+        // Validamos que hayan ingresado el nombre del tecnico
+        let inputTecnico = document.getElementById('nombre-tecnico-repara');
+        let nombreTecnico = inputTecnico ? inputTecnico.value.trim() : "";
+
+        if (nombreTecnico === "") {
+            alert("⚠️ ALERTA: Debe ingresar obligatoriamente el NOMBRE DEL TECNICO que realizó la reparación para poder guardar el registro.");
+            if (inputTecnico) inputTecnico.focus();
+            return; // Bloquea el guardado aquí
+        }
 
         let checks = document.getElementById('lista-pendientes-modal').querySelectorAll('.check-rep');
         let reparadasAhorita = 0;
@@ -1571,13 +1854,14 @@
             if (tarea) {
                 if (chk.checked) {
                     reparadasAhorita++;
-                    let notaInput = document.getElementById(`nota-rep-${tareaId}`);
+                    let notaInput = document.getElementById("nota-rep-" + tareaId);
                     let nota = notaInput ? notaInput.value : "";
                     if (!nota.trim()) nota = "Reparado sin detalles adicionales.";
                     
+                    // Aquí agregamos el nombre del tecnico a la nota final
                     tarea.reparado = true;
                     tarea.fechaReparacion = ahoraIso;
-                    tarea.notaReparacion = nota;
+                    tarea.notaReparacion = nota + " (Realizado por: " + nombreTecnico + ")";
                 }
             }
         });
@@ -1587,12 +1871,15 @@
             return;
         }
 
-        historialInformes[index].estado = calcularEstadoGlobal(historialInformes[index].tareas);
+        // Llamamos a la función de estado asegurándonos de pasar la firma del supervisor que ya existía
+        let firmaSupActual = historialInformes[index].firmaSupervisor;
+        historialInformes[index].estado = calcularEstadoGlobal(historialInformes[index].tareas, firmaSupActual);
+        
         db.ref('historialInformes').set(historialInformes); 
         
         cerrarModal();
         cargarHistorial();
-        alert(`✅ Se registraron exitosamente ${reparadasAhorita} reparación(es). El PDF ha sido actualizado en la nube.`);
+        alert("✅ Se registraron exitosamente " + reparadasAhorita + " reparación(es) a nombre de " + nombreTecnico + ". El PDF ha sido actualizado.");
     }
 
     function descargarPDFDesdeModal() {
@@ -1669,6 +1956,71 @@
         }
     }
 
+    function migrarInformeAntiguo(id) {
+        const informe = historialInformes.find(i => i.id === id);
+        if(!informe) return;
+
+        // Le decimos al sistema que estamos "editando" este ID para que lo sobreescriba y borre el viejo
+        informeEditandoId = id;
+        
+        // Rescatamos los datos base
+        maquinaActual = informe.maquina;
+        let selectHtml = document.getElementById('selector-maquina');
+        if(selectHtml) {
+            selectHtml.value = maquinaActual;
+            selectHtml.disabled = true; // Bloqueamos la máquina para que no se equivoquen
+        }
+
+        // Cargamos el formulario en blanco para esa máquina
+        if (typeof cargarPauta === "function") cargarPauta();
+
+        // Rellenamos los textos que podamos rescatar
+        let fechaFormat = "";
+        if (informe.fecha) fechaFormat = informe.fecha.split('T')[0];
+
+        document.getElementById('ctrl-fecha').value = fechaFormat;
+        document.getElementById('ctrl-tecnico').value = informe.inspector || "";
+        document.getElementById('ctrl-supervisor').value = informe.supervisor || "";
+        document.getElementById('ctrl-serie').value = informe.serie || "";
+        document.getElementById('ctrl-ubicacion').value = informe.ubicacion || "";
+        
+        if (document.getElementById('ctrl-horas-edit')) {
+             document.getElementById('ctrl-horas-edit').value = informe.horas || "";
+        }
+
+        // Limpiamos los lienzos de firma por si acaso
+        if(typeof canvases !== "undefined") {
+            if(canvases.tecnico && canvases.tecnico.pad) canvases.tecnico.pad.clear();
+            if(canvases.supervisor && canvases.supervisor.pad) canvases.supervisor.pad.clear();
+        }
+
+        // Preparamos los botones
+        document.getElementById('btn-generar').innerText = "Guardar Migración de Informe";
+        document.getElementById('btn-cancelar-edicion').style.display = "block";
+
+        cambiarPestana('pauta');
+        window.scrollTo(0, 0);
+
+        alert("🔄 MODO MIGRACIÓN ACTIVO\n\n1. Vuelva a marcar el Checklist original.\n2. Ingrese obligatoriamente la firma del Técnico (y Supervisor si está).\n3. Presione Guardar.\n\nEl sistema eliminará automáticamente el informe antiguo y lo reemplazará por este nuevo.");
+    }
+	
+	function filtrarHistorial() {
+        let inputBuscador = document.getElementById('buscador-historial');
+        if (!inputBuscador) return; 
+    
+        let textoBuscado = inputBuscador.value.toLowerCase();
+        let tarjetas = document.getElementsByClassName('historial-item');
+
+        for (let i = 0; i < tarjetas.length; i++) {
+            let contenidoTarjeta = tarjetas[i].innerText.toLowerCase();
+            if (contenidoTarjeta.includes(textoBuscado)) {
+                tarjetas[i].style.display = "";
+            } else {
+                tarjetas[i].style.display = "none";
+            }
+        }
+    }
+    
     function limpiarHistorial() {
         if(confirm("¿Estás seguro que deseas borrar todos los informes de la NUBE? Esto no se puede deshacer.")) {
             historialInformes = [];
@@ -1676,6 +2028,99 @@
             cargarHistorial();
         }
     }
+
+    // --- FUNCIÓN PARA EL PANEL DESPLEGABLE DE ESTADO GENERAL ---
+    function actualizarEstadoEquiposGeneral() {
+        const contenedor = document.getElementById('contenedor-estado-equipos');
+        if (!contenedor) return;
+
+        let htmlList = "";
+        let hoy = new Date();
+        let hayEquipos = false;
+
+        for (const maq in estadoMaquinas) {
+            hayEquipos = true;
+            let estado = estadoMaquinas[maq];
+            let datosBase = baseDeDatos[maq];
+            
+            let tieneInformes = historialInformes.some(inf => inf.maquina === maq);
+
+            let codigoEmpresa = (datosBase && datosBase.meta && datosBase.meta.codigo) ? datosBase.meta.codigo : "S/N";
+            let colorBorde, estadoTxt, detallesTxt;
+
+            if (!tieneInformes) {
+                colorBorde = "#6c757d"; 
+                estadoTxt = "⚪ Sin Inspección";
+                detallesTxt = "Equipo nuevo, sin mantenimiento previo.";
+            } else {
+                let fechaMaint = new Date(estado.fechaUltimoMaint + "T00:00:00");
+                let diferenciaDias = Math.floor((hoy - fechaMaint) / (1000 * 60 * 60 * 24));
+                if (diferenciaDias < 0) diferenciaDias = 0;
+
+                let horasUso = estado.horas || 0;
+                colorBorde = "#28a745"; 
+                estadoTxt = "🟢 Óptimo";
+                detallesTxt = "Horas: " + horasUso + " hrs | Días transcurridos: " + diferenciaDias + " días";
+
+                if (horasUso >= 35 || diferenciaDias >= 75) {
+                    colorBorde = "#dc3545"; 
+                    estadoTxt = "⚠️ Requiere Mantenimiento";
+                }
+            }
+          
+            htmlList += "<" + "div style='background: #f8f9fa; padding: 10px; margin-bottom: 8px; border-radius: 6px; border-left: 4px solid " + colorBorde + "; font-size: 0.9em;'>" +
+                "<" + "strong>" + maq + "<" + "/strong> (Código: <" + "span style='color:#0056b3;'>" + codigoEmpresa + "<" + "/span>)<" + "br>" +
+                "<" + "span style='color: #444;'>Estado: <" + "strong>" + estadoTxt + "<" + "/strong> | " + detallesTxt + "<" + "/span>" +
+                "<" + "/div>";
+        }
+        
+        if (!hayEquipos) {
+            htmlList = "<" + "p style='color: #666; font-size: 0.9em;'>No hay equipos registrados en el sistema todavía.<" + "/p>";
+        }
+        contenedor.innerHTML = htmlList;
+    }
+    
+    // --- SISTEMA DE NAVEGACIÓN MAESTRO ---
+    function navegarA(destino) {
+        let vistas = document.querySelectorAll('.tab-content, .view');
+        for (let i = 0; i < vistas.length; i++) {
+            vistas[i].classList.remove('active');
+            vistas[i].style.display = 'none';
+        }
+
+        let vistaActiva = document.getElementById('tab-' + destino) || document.getElementById(destino + '-view');
+        if (vistaActiva) {
+            vistaActiva.classList.add('active');
+            vistaActiva.style.display = 'block';
+        }
+
+        let selectorContainer = document.getElementById('selector-container');
+        if (selectorContainer) {
+            if (destino === 'historial' || destino === 'instrucciones' || destino === 'creador') {
+                selectorContainer.style.display = 'none';
+            } else {
+                selectorContainer.style.display = 'block';
+            }
+        }
+
+        let btnGenerar = document.getElementById('btn-generar');
+        if (btnGenerar) {
+            if (destino === 'inspeccion') {
+                btnGenerar.style.display = 'block';
+            } else {
+                btnGenerar.style.display = 'none';
+            }
+        }
+
+        if (destino === 'historial') {
+            cargarHistorial();
+        }
+        if (destino === 'creador') {
+            listarEquiposEnCreador();
+        }
+    }
+    
+    window.cambiarPestana = navegarA;	
 </script>
 </body>
 </html>
