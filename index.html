@@ -13,6 +13,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <!-- LIBRERÍA DE DISCO DURO (STORAGE) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
 
     <style>
         :root {
@@ -119,7 +121,7 @@
 		
 		<!-- PANEL DESPLEGABLE DE ESTADO GENERAL -->
         <div class="card" style="margin-top: 15px; border-left: 5px solid #28a745; margin-bottom: 15px;">
-            <details style="cursor: pointer;" ontoggle="if(this.open) actualizarEstadoEquiposGeneral()">
+            <details id="panel-estado-general" style="cursor: pointer;" ontoggle="if(this.open) actualizarEstadoEquiposGeneral()">
                 <summary style="font-weight: bold; font-size: 1.1em; color: #28a745; outline: none; padding: 5px;">
                     📊 Desplegar Estado General de Todas las Máquinas
                 </summary>
@@ -135,7 +137,7 @@
         </div>
 
         <div class="tabs">
-            <button class="tab-btn active" onclick="cambiarPestana('inspeccion')" id="btn-inspeccion">📝 Inspección</button>
+            <button class="tab-btn active" onclick="cambiarPestana('inspeccion')" id="btn-inspeccion">📝 Mantenimiento</button>
             <button class="tab-btn" onclick="cambiarPestana('horometro')" id="btn-horometro">⏱️ Horómetro</button>
             <button class="tab-btn" onclick="cambiarPestana('historial')" id="btn-historial">📂 Historial</button>
             <button class="tab-btn" onclick="cambiarPestana('instrucciones')" id="btn-instrucciones">📖 Manual</button>
@@ -175,7 +177,7 @@
                 
             </div>
 
-            <h3 style="color:#0056b3; margin-top:20px;">Pauta de Revisión</h3>
+            <h3 style="color:#0056b3; margin-top:20px;">Pauta de Mantenimiento y Limpieza</h3>
             <div id="lista-tareas"></div>
 
             <!-- FIRMAS DIGITALES -->
@@ -196,10 +198,11 @@
             </div>
             
             <div style="text-align: center; padding-bottom: 30px;">
+                <button id="btn-rechazar-supervisor" onclick="rechazarPorSupervisor()" style="display:none; background:#dc3545; color:white; padding:15px; border:none; border-radius:30px; font-size:1.1em; font-weight:bold; cursor:pointer; width:92%; max-width:400px; margin-bottom:10px; box-shadow: 0 4px 10px rgba(0,0,0,0.2);">❌ Rechazar Mantenimiento</button>
                 <button id="btn-cancelar-edicion" onclick="cancelarEdicion()" style="display:none; background:#6c757d; color:white; padding:15px; border:none; border-radius:30px; font-size:1.1em; font-weight:bold; cursor:pointer; width:92%; max-width:400px; margin-bottom:10px; box-shadow: 0 4px 10px rgba(0,0,0,0.2);">❌ Cancelar Edición</button>
             </div>
-            
-            <button class="btn-finalizar" id="btn-generar" onclick="generarYGuardarInforme()">Generar y Guardar Informe</button>
+        
+            <button class="btn-finalizar" id="btn-generar" onclick="generarYGuardarInforme()">Generar y Guardar Mantenimiento</button>
         </div>
 
         <!-- Pestaña 2: HORÓMETRO -->
@@ -309,7 +312,9 @@
             <div class="card">
                 <h3 style="margin-top:0;">Equipos Existentes en el Sistema</h3>
                 <div id="lista-equipos-sistema"></div>
-                <button onclick="restaurarBaseOriginal()" style="width:100%; padding:10px; margin-top:20px; background:#6c757d; color:white; border:none; border-radius:6px; cursor:pointer;">Restaurar Máquinas por Defecto (Fábrica)</button>
+                <div style="margin-top:20px;">
+                    <button onclick="abrirPapelera()" style="width:100%; padding:15px; background:#17a2b8; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:bold; font-size:1.1em; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">🗑️ Abrir Papelera de Reciclaje (30 días)</button>
+                </div>
             </div>
         </div>
 
@@ -396,6 +401,34 @@
             </div>
         </div>
     </div>
+	
+	
+	<!-- MODAL DE DETALLE Y RESUMEN DE MÁQUINA -->
+    <div id="modal-detalle-maquina" class="modal-overlay">
+        <div class="modal-content">
+            <h3 id="detalle-titulo-maq" style="margin-top:0; color:#0056b3;">📊 Detalle del Equipo</h3>
+            <div id="detalle-contenido-maq" style="max-height: 50vh; overflow-y: auto; padding: 5px;">
+                <!-- Aquí se cargará dinámicamente el horómetro y sus informes -->
+            </div>
+            <div style="display:flex; gap:10px; margin-top:15px;">
+                <button onclick="irAHistorialDesdeDetalle()" style="flex:1; padding:10px; border:none; background:var(--primary); color:white; border-radius:6px; cursor:pointer; font-weight:bold;">📂 Ver en Historial</button>
+                <button onclick="cerrarDetalleMaquina()" style="flex:1; padding:10px; border:none; background:#ccc; border-radius:6px; cursor:pointer; font-weight:bold;">Cerrar</button>
+            </div>
+        </div>
+    </div>
+	
+	<!-- MODAL DE PAPELERA DE RECICLAJE -->
+    <div id="modal-papelera" class="modal-overlay">
+        <div class="modal-content">
+            <h3 style="margin-top:0; color:#dc3545;">🗑️ Papelera de Reciclaje</h3>
+            <p style="font-size:0.9em; color:#555;">Los elementos eliminados se guardarán aquí durante 30 días antes de borrarse automáticamente de la nube.</p>
+            <div id="contenido-papelera" style="max-height: 40vh; overflow-y: auto; padding: 10px; background: #f8f9fa; border: 1px solid #ddd; border-radius: 6px;">
+                <!-- Aquí se cargará la lista de borrados -->
+            </div>
+            <button onclick="cerrarPapelera()" style="width:100%; padding:12px; border:none; background:#ccc; border-radius:6px; cursor:pointer; font-weight:bold; margin-top:15px;">Cerrar Papelera</button>
+        </div>
+    </div>
+	
     <!-- VISTA FINAL DE REPORTES GENERADOS -->
     <div id="informe-view">
         <div id="informe-botones" class="no-print" style="display:flex; gap:10px; margin-bottom: 20px; flex-wrap: wrap; background: #e9f2fb; padding: 15px; border-radius: 8px;">
@@ -424,6 +457,35 @@
     
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
+    const storage = firebase.storage(); // NUEVO: Inicializa el disco duro
+
+    // NUEVO: Funciones maestras para subir archivos y mostrar carga
+    async function subirImagenAStorage(base64Data, rutaDestino) {
+        if (!base64Data) return null;
+        if (base64Data.startsWith('http')) return base64Data; // Si ya es link, no la sube de nuevo
+        
+        const ref = storage.ref().child(rutaDestino);
+        const uploadTask = await ref.putString(base64Data, 'data_url');
+        const downloadURL = await uploadTask.ref.getDownloadURL();
+        return downloadURL;
+    }
+
+    function mostrarLoader(texto) {
+        let loader = document.getElementById('firebase-action-loader');
+        if(!loader) {
+            loader = document.createElement('div');
+            loader.id = 'firebase-action-loader';
+            loader.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.9); z-index:9999; display:flex; justify-content:center; align-items:center; font-size:1.2em; font-weight:bold; color:#0056b3; text-align:center; flex-direction:column; padding:20px;';
+            document.body.appendChild(loader);
+        }
+        loader.innerHTML = `<div style="font-size:3em; margin-bottom:15px;">⏳</div><div>${texto}</div>`;
+        loader.style.display = 'flex';
+    }
+
+    function ocultarLoader() {
+        let loader = document.getElementById('firebase-action-loader');
+        if(loader) loader.style.display = 'none';
+    }
 
     // Función de ayuda para limpiar nombres de llaves prohibidos por Firebase
     function limpiarLlaveFirebase(nombre) {
@@ -815,7 +877,6 @@
             </table>
         `;
  
-        
         let isEditing = informeEditandoId !== null;
         let disabledPointer = isEditing ? 'style="pointer-events:none; opacity:0.6;"' : '';
         let disabledInput = isEditing ? 'readonly style="background:#e9ecef;"' : '';
@@ -841,16 +902,16 @@
         contenedorTareas.innerHTML = ""; 
         registros = {}; 
         
-		console.log("Pauta de revisión cargada:", datos.pauta);
         datos.pauta.forEach(tarea => {
             let estadoInicialDeUI = 'Bueno';
             let obsInicial = '';
             let accionInicial = '';
 
             if (isEditing) {
-                let infAnt = historialInformes.find(i => i.id === informeEditandoId);
+                // FORZAMOS LA COMPARACIÓN COMO TEXTO (String) PARA EVITAR ERRORES DE TIPO
+                let infAnt = historialInformes.find(i => String(i.id) === String(informeEditandoId));
                 if (infAnt && infAnt.tareas) {
-                    let tarAnt = infAnt.tareas.find(t => t.id === tarea.id);
+                    let tarAnt = infAnt.tareas.find(t => String(t.id) === String(tarea.id));
                     if (tarAnt) {
                         estadoInicialDeUI = tarAnt.estadoOriginal;
                         obsInicial = tarAnt.obs || '';
@@ -903,11 +964,6 @@
 
         actualizarHorometro(estado);
         actualizarNombresFirmas();
-		
-		if (estadoMaquinas[maquinaActual]) {
-            actualizarHorometro(estadoMaquinas[maquinaActual]);
-        }
-
     }
 
     function actualizarHorometro(estado) {
@@ -999,12 +1055,19 @@
         equipoEnEdicion = nombreOriginal; 
     
         document.getElementById('nuevo-eq-id').value = nombreOriginal;
-        document.getElementById('nuevo-eq-codigo').value = eq.meta.codigo || "";
-        document.getElementById('nuevo-eq-marca').value = eq.meta.marca || "";
-        document.getElementById('nuevo-eq-modelo').value = eq.meta.modelo || "";
-        document.getElementById('nuevo-eq-potencia').value = eq.meta.potencia || "";
+        
+        let inpCodigo = document.getElementById('nuevo-eq-codigo');
+        if(inpCodigo) inpCodigo.value = eq.meta.codigo || "";
+        
+        let inpMarca = document.getElementById('nuevo-eq-marca');
+        if(inpMarca) inpMarca.value = eq.meta.marca || "";
+        
+        let inpModelo = document.getElementById('nuevo-eq-modelo');
+        if(inpModelo) inpModelo.value = eq.meta.modelo || "";
+        
+        let inpPotencia = document.getElementById('nuevo-eq-potencia');
+        if(inpPotencia) inpPotencia.value = eq.meta.potencia || "";
     
-        // Extraemos Serie y Ubicación de la base de datos al editar
         let inputSerie = document.getElementById('creador-serie');
         if(inputSerie) inputSerie.value = eq.meta.serie || "";
     
@@ -1013,6 +1076,7 @@
     
         document.getElementById('nuevo-eq-instrucciones').value = (eq.instrucciones || []).join('\n');
     
+        // AQUI ESTA LA MAGIA DE LA LIMPIEZA
         const contenedor = document.getElementById('contenedor-nuevas-tareas');
         contenedor.innerHTML = "";
         contadorNuevasTareas = 0;
@@ -1022,13 +1086,13 @@
             const div = document.createElement('div');
             div.className = 'nueva-tarea-item';
             div.style.cssText = "background:#fff; padding:10px; border:1px solid #ccc; margin-bottom:5px; border-radius:4px; border-left: 4px solid #0056b3;";
-            div.innerHTML = "<" + "div style='display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;'>" +
-                "<" + "strong style='color:#0056b3;'>Punto de Pauta #" + contadorNuevasTareas + "<" + "/strong>" +
-                "<" + "button onclick='this.parentElement.parentElement.remove()' style='background:#dc3545; color:white; border:none; border-radius:4px; cursor:pointer; font-size:0.8em; padding:4px 8px;'>X Quitar<" + "/button>" +
-            "<" + "/div>" +
-            "<" + "input type='text' class='form-control t-nombre' placeholder='Nombre (Ej: Botón de Encendido)' value='" + tarea.nombre + "' style='margin-bottom:5px;'>" +
-            "<" + "input type='text' class='form-control t-desc' placeholder='Instrucción de revisión' value='" + tarea.desc + "' style='margin-bottom:5px;'>" +
-            "<" + "input type='text' class='form-control t-frec' placeholder='Frecuencia' value='" + tarea.frecuencia + "'>";
+            div.innerHTML = "<div style='display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;'>" +
+                "<strong style='color:#0056b3;'>Punto de Pauta #" + contadorNuevasTareas + "</strong>" +
+                "<button onclick='this.parentElement.parentElement.remove()' style='background:#dc3545; color:white; border:none; border-radius:4px; cursor:pointer; font-size:0.8em; padding:4px 8px;'>X Quitar</button>" +
+            "</div>" +
+            "<input type='text' class='form-control t-nombre' placeholder='Nombre' value='" + tarea.nombre + "' style='margin-bottom:5px;'>" +
+            "<input type='text' class='form-control t-desc' placeholder='Instrucción' value='" + tarea.desc + "' style='margin-bottom:5px;'>" +
+            "<input type='text' class='form-control t-frec' placeholder='Frecuencia' value='" + tarea.frecuencia + "'>";
         
             contenedor.appendChild(div);
         });
@@ -1142,59 +1206,7 @@
         }
     }
 
-    function editarEquipoCreador(nombreOriginal) {
-        const eq = baseDeDatos[nombreOriginal];
-        if(!eq) return;
-
-        equipoEnEdicion = nombreOriginal; 
     
-        document.getElementById('nuevo-eq-id').value = nombreOriginal;
-        
-        let inpCodigo = document.getElementById('nuevo-eq-codigo');
-        if(inpCodigo) inpCodigo.value = eq.meta.codigo || "";
-        
-        let inpMarca = document.getElementById('nuevo-eq-marca');
-        if(inpMarca) inpMarca.value = eq.meta.marca || "";
-        
-        let inpModelo = document.getElementById('nuevo-eq-modelo');
-        if(inpModelo) inpModelo.value = eq.meta.modelo || "";
-        
-        let inpPotencia = document.getElementById('nuevo-eq-potencia');
-        if(inpPotencia) inpPotencia.value = eq.meta.potencia || "";
-    
-        // AQUI TAMBIEN: Enviamos los datos para editar a las casillas del CREADOR
-        let inputSerie = document.getElementById('creador-serie');
-        if(inputSerie) inputSerie.value = eq.meta.serie || "";
-    
-        let inputUbicacion = document.getElementById('creador-ubicacion');
-        if(inputUbicacion) inputUbicacion.value = eq.meta.ubicacion || "";
-    
-        document.getElementById('nuevo-eq-instrucciones').value = (eq.instrucciones || []).join('\n');
-    
-        const contenedor = document.getElementById('contenedor-nuevas-tareas');
-        contenedor.innerHTML = "";
-        contadorNuevasTareas = 0;
-    
-        eq.pauta.forEach(tarea => {
-            contadorNuevasTareas++;
-            const div = document.createElement('div');
-            div.className = 'nueva-tarea-item';
-            div.style.cssText = "background:#fff; padding:10px; border:1px solid #ccc; margin-bottom:5px; border-radius:4px; border-left: 4px solid #0056b3;";
-            div.innerHTML = "<" + "div style='display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;'>" +
-                "<" + "strong style='color:#0056b3;'>Punto de Pauta #" + contadorNuevasTareas + "<" + "/strong>" +
-                "<" + "button onclick='this.parentElement.parentElement.remove()' style='background:#dc3545; color:white; border:none; border-radius:4px; cursor:pointer; font-size:0.8em; padding:4px 8px;'>X Quitar<" + "/button>" +
-            "<" + "/div>" +
-            "<" + "input type='text' class='form-control t-nombre' placeholder='Nombre' value='" + tarea.nombre + "' style='margin-bottom:5px;'>" +
-            "<" + "input type='text' class='form-control t-desc' placeholder='Instrucción' value='" + tarea.desc + "' style='margin-bottom:5px;'>" +
-            "<" + "input type='text' class='form-control t-frec' placeholder='Frecuencia' value='" + tarea.frecuencia + "'>";
-        
-            contenedor.appendChild(div);
-        });
-    
-        document.getElementById('btn-guardar-creador').innerText = "🔄 Actualizar en la Nube";
-        document.getElementById('btn-cancelar-creador').style.display = "block";
-        window.scrollTo(0, 0);
-    }
 	
 	function listarEquiposEnCreador() {
         var contenedor = document.getElementById("lista-equipos-sistema");
@@ -1246,11 +1258,20 @@
     }  
 
     function borrarEquipo(nombre) {
-        if(confirm(`¿Estás seguro de eliminar "${nombre}" de la nube de la empresa?`)) {
+        if(confirm(`¿Estás seguro de eliminar "${nombre}"? Se moverá a la papelera por 30 días.`)) {
+            let datosBorrados = {
+                idOriginal: nombre, // Guardamos el nombre exacto para poder restaurarlo perfecto
+                datos: baseDeDatos[nombre],
+                estado: estadoMaquinas[nombre] || null,
+                fechaBorrado: Date.now()
+            };
+            
+            // 1. Guardar en la papelera en Firebase
+            db.ref('papelera/equipos/' + limpiarLlaveFirebase(nombre)).set(datosBorrados);
+            
+            // 2. Eliminar del listado activo
             delete baseDeDatos[nombre];
             db.ref('baseDeDatos').set(baseDeDatos);
-        
-            // Limpia automáticamente el registro fantasma de estado
             db.ref('estadoMaquinas/' + nombre).remove();
         
             inicializarSelectorMaquinas();
@@ -1321,26 +1342,35 @@
         });
     }
 
-    function generarYGuardarInforme() {
-        const meta = baseDeDatos[maquinaActual].meta;
-        const fechaInp = document.getElementById('ctrl-fecha').value;
-        const tecnico = document.getElementById('ctrl-tecnico').value || "No especificado";
-        const supervisor = document.getElementById('ctrl-supervisor').value || "No especificado";
-        const serie = document.getElementById('ctrl-serie').value || "S/N";
-        const ubicacion = document.getElementById('ctrl-ubicacion').value || "Taller Principal";
-        const horasReporte = document.getElementById('ctrl-horas-edit').value || 0; 
-        
-        let fechaBase = fechaInp ? new Date(fechaInp + "T00:00:00") : new Date();
+    async function generarYGuardarInforme() {
+        if (!baseDeDatos[maquinaActual]) {
+            alert("⚠️ Error: No hay un equipo seleccionado correctamente.");
+            return;
+        }
 
-        if(!informeEditandoId) {
+        const meta = baseDeDatos[maquinaActual].meta;
+        const fechaInp = document.getElementById('ctrl-fecha');
+        const tecnicoInp = document.getElementById('ctrl-tecnico');
+        const supervisorInp = document.getElementById('ctrl-supervisor');
+        const serieInp = document.getElementById('ctrl-serie');
+        const ubicacionInp = document.getElementById('ctrl-ubicacion');
+        const horasInp = document.getElementById('ctrl-horas-edit');
+
+        const fechaBase = (fechaInp && fechaInp.value) ? new Date(fechaInp.value + "T00:00:00") : new Date();
+        const tecnico = (tecnicoInp && tecnicoInp.value.trim()) ? tecnicoInp.value.trim() : "No especificado";
+        const supervisor = (supervisorInp && supervisorInp.value.trim()) ? supervisorInp.value.trim() : "No especificado";
+        const serie = (serieInp && serieInp.value.trim()) ? serieInp.value.trim() : (baseDeDatos[maquinaActual].meta.serie || "S/N");
+        const ubicacion = (ubicacionInp && ubicacionInp.value.trim()) ? ubicacionInp.value.trim() : (estadoMaquinas[maquinaActual]?.ubicacion || "Taller Principal");
+        const horasReporte = (horasInp && !isNaN(parseFloat(horasInp.value))) ? parseFloat(horasInp.value) : (estadoMaquinas[maquinaActual]?.horas || 0);
+
+        if (!informeEditandoId && estadoMaquinas[maquinaActual]) {
             estadoMaquinas[maquinaActual].serie = serie;
             estadoMaquinas[maquinaActual].ubicacion = ubicacion;
         }
 
         let tareasReporte = [];
         baseDeDatos[maquinaActual].pauta.forEach(tarea => {
-            const data = registros[tarea.id];
-            
+            const data = registros[tarea.id] || { estado: 'Bueno', obs: '', accion: '' };
             let manteniaReparado = false;
             let fr = null;
             let nr = "";
@@ -1348,7 +1378,7 @@
 
             if(informeEditandoId) {
                 let infAnt = historialInformes.find(i => i.id === informeEditandoId);
-                if(infAnt) {
+                if(infAnt && infAnt.tareas) {
                     let tarAnt = infAnt.tareas.find(t => t.id === tarea.id);
                     if(tarAnt) {
                         if (data.estado !== 'Bueno' && tarAnt.reparado) {
@@ -1374,8 +1404,8 @@
             });
         });
 
-        let firmaTec = isCanvasEmpty(canvases.tecnico.el) ? null : canvases.tecnico.el.toDataURL();
-        let firmaSup = isCanvasEmpty(canvases.supervisor.el) ? null : canvases.supervisor.el.toDataURL();
+        let firmaTec = (canvases.tecnico.el && !isCanvasEmpty(canvases.tecnico.el)) ? canvases.tecnico.el.toDataURL() : null;
+        let firmaSup = (canvases.supervisor.el && !isCanvasEmpty(canvases.supervisor.el)) ? canvases.supervisor.el.toDataURL() : null;
         
         if(informeEditandoId) {
             let infAntiguo = historialInformes.find(i => i.id === informeEditandoId);
@@ -1385,57 +1415,90 @@
             }
         }
 
-        const informeData = {
-            id: informeEditandoId ? informeEditandoId : Date.now(),
-            fecha: fechaBase.toISOString(),
-            maquina: maquinaActual,
-            inspector: tecnico,
-            supervisor: supervisor,
-            firmaTecnico: firmaTec,
-            firmaSupervisor: firmaSup,
-            serie: serie,
-            ubicacion: ubicacion,
-            horas: horasReporte, 
-            meta: meta,
-            tareas: tareasReporte
-        };
-
-        informeData.estado = calcularEstadoGlobal(tareasReporte, firmaSup, firmaTec);
-
-        if (informeEditandoId) {
-            let index = historialInformes.findIndex(i => i.id === informeEditandoId);
-            if(index !== -1) historialInformes[index] = informeData;
-        } else {
-            historialInformes.unshift(informeData);
-        }
+        mostrarLoader("☁️ Guardando documentos y subiendo firmas a Firebase Storage...");
         
-        db.ref('historialInformes').set(historialInformes);
+        try {
+            const tempId = informeEditandoId ? informeEditandoId : Date.now();
+            let eraEdicion = informeEditandoId !== null; // Guardamos el estado de edición antes de limpiar
+            
+            let urlFirmaTec = await subirImagenAStorage(firmaTec, `firmas/${tempId}_tecnico.png`);
+            let urlFirmaSup = await subirImagenAStorage(firmaSup, `firmas/${tempId}_supervisor.png`);
 
-        if(!informeEditandoId) {
-            estadoMaquinas[maquinaActual].horas = 0;
-            estadoMaquinas[maquinaActual].fechaUltimoMaint = fechaBase.toISOString().split('T')[0];
-            db.ref('estadoMaquinas').set(estadoMaquinas);
-        }
+            const informeData = {
+                id: tempId,
+                fecha: fechaBase.toISOString(),
+                maquina: maquinaActual,
+                inspector: tecnico,
+                supervisor: supervisor,
+                firmaTecnico: urlFirmaTec,
+                firmaSupervisor: urlFirmaSup,
+                serie: serie,
+                ubicacion: ubicacion,
+                horas: horasReporte, 
+                meta: meta,
+                tareas: tareasReporte
+            };
 
-        informeEditandoId = null;
-        document.getElementById('btn-generar').innerText = "Generar y Guardar Informe";
-        document.getElementById('btn-cancelar-edicion').style.display = "none";
-        document.getElementById('selector-maquina').disabled = false;
+            informeData.estado = calcularEstadoGlobal(tareasReporte, urlFirmaSup, urlFirmaTec);
 
-        // NUEVA LÓGICA: Si no hay firma del supervisor, pausamos el PDF y notificamos
-        if (!firmaSup) {
-            alert("⚠️ Informe guardado temporalmente. Falta la firma del supervisor para finalizarlo.");
-            if(confirm("¿Deseas enviar un WhatsApp ahora para avisar que deben revisarlo y firmarlo?")) {
-                let msj = `Hola! He terminado la inspección técnica de la máquina ${maquinaActual}. Está guardada en el sistema esperando tu firma para finalizar el reporte.`;
-                window.open(`https://wa.me/?text=${encodeURIComponent(msj)}`, '_blank');
+            if (eraEdicion) {
+                let index = historialInformes.findIndex(i => i.id === informeEditandoId);
+                if(index !== -1) historialInformes[index] = informeData;
+            } else {
+                historialInformes.unshift(informeData);
             }
-            cambiarPestana('historial'); // Enviamos al usuario al historial
-            return; // Detenemos la función para que NO se genere el PDF aún
-        }
+            
+            await db.ref('historialInformes').set(historialInformes);
 
-        // Si ya están ambas firmas, se finaliza con éxito
-        alert("✅ Informe y Checklist finalizados y guardados exitosamente.");
-        renderizarPDF(informeData);
+            if(!eraEdicion && estadoMaquinas[maquinaActual]) {
+                estadoMaquinas[maquinaActual].horas = 0;
+                estadoMaquinas[maquinaActual].fechaUltimoMaint = fechaBase.toISOString().split('T')[0];
+                await db.ref('estadoMaquinas').set(estadoMaquinas);
+            }
+
+            ocultarLoader();
+
+            // --- LIMPIEZA PROFUNDA DE LA INTERFAZ ---
+            informeEditandoId = null;
+            const btnGen = document.getElementById('btn-generar');
+            if(btnGen) btnGen.innerText = "Generar y Guardar Mantenimiento";
+            const btnCan = document.getElementById('btn-cancelar-edicion');
+            if(btnCan) btnCan.style.display = "none";
+            const btnRech = document.getElementById('btn-rechazar-supervisor');
+            if(btnRech) btnRech.style.display = "none";
+            const selMaq = document.getElementById('selector-maquina');
+            if(selMaq) selMaq.disabled = false;
+            
+            quitarBloqueoFirmas();
+            document.getElementById('ctrl-tecnico').value = "";
+            document.getElementById('ctrl-supervisor').value = "";
+            limpiarFirma('tecnico');
+            limpiarFirma('supervisor');
+            cargarDatosMaquina(); 
+
+            if (!urlFirmaSup) {
+                alert("⚠️ Informe guardado temporalmente. Falta la firma del supervisor para finalizarlo.");
+                cambiarPestana('historial');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                return; 
+            }
+
+            alert("✅ Informe y Checklist finalizados y guardados exitosamente.");
+            
+            // --- RUTEO INTELIGENTE ---
+            if (eraEdicion) {
+                // Si solo estábamos editando/firmando, volvemos al Historial
+                cambiarPestana('historial');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            } else {
+                // Si es un mantenimiento nuevo, mostramos el PDF
+                renderizarPDF(informeData);
+            }
+            
+        } catch (error) {
+            ocultarLoader();
+            alert("Ocurrió un error al intentar subir la información: " + error.message);
+        }
     }
 
     function renderizarPDF(informe) {
@@ -1741,17 +1804,17 @@
                 colorBg = "#d4edda"; colorText = "#155724";
             } else if (estadoTexto === "Operativo con Pendientes") {
                 colorBg = "#fff3cd"; colorText = "#856404";
-            } else if (estadoTexto.includes("Rechazado")) {
+            } else if (estadoTexto.includes("Rechazado (Peligro)")) {
                 colorBg = "#f8d7da"; colorText = "#721c24";
-            } else if (estadoTexto === "Pendiente Firma Supervisor" || estadoTexto === "Falta firma técnico y supervisor") {
+            } else if (estadoTexto === "Rechazado por Supervisor") {
+                colorBg = "#f8d7da"; colorText = "#721c24";
+            } else if (estadoTexto.includes("Falta firma")) {
                 colorBg = "#cce5ff"; colorText = "#004085";
-            } else if (estadoTexto === "Falta firma técnico") {
-                colorBg = "#d1ecf1"; colorText = "#0c5460";
-            } else if (estadoTexto === "Falta firma supervisor") {
-                colorBg = "#bee5eb"; colorText = "#0c5460";
             }
 
-            let necesitaReparar = estadoTexto.includes("Rechazado") || estadoTexto.includes("Pendientes");
+            // Validación mejorada para detectar fallas pendientes o estados regulares/malos
+            let tieneTareasConFalla = informe.tareas && informe.tareas.some(t => t.estadoOriginal !== 'Bueno' && !t.reparado);
+            let necesitaReparar = estadoTexto.includes("Peligro") || estadoTexto.includes("Pendientes") || tieneTareasConFalla;
 
             let botonPlazo = necesitaReparar && informe.tareas
                 ? `<button class="btn-ver" style="background:#856404; color:#fff; border:none; padding:8px 12px; border-radius:4px; cursor:pointer; font-weight:bold; margin-bottom:5px; width:100%;" onclick="abrirModalPlazo(${informe.id})">📅 Plazo Operaciones</button>`
@@ -1779,9 +1842,16 @@
                 }
             }
 
+            if (informe.motivoRechazo && estadoTexto === "Rechazado por Supervisor") {
+                textoPlazos += `<div style="margin-top:10px; background:rgba(220,53,69,0.1); padding:8px; border-radius:4px; font-size:0.85em; border-left:3px solid #dc3545;">
+                <strong style="color:#dc3545;">❌ Mantenimiento Rechazado:</strong><br>${informe.motivoRechazo}</div>`;
+            }
+
             const ambasFirmasPresentes = informe.firmaTecnico && informe.firmaSupervisor;
+            let textoBotonEdicion = (estadoTexto === "Rechazado por Supervisor") ? "🔧 Corregir Falla" : "✍️ Ingresar Firma";
+
             let divBotonesEdicion = (!ambasFirmasPresentes && informe.tareas)
-                ? `<div style="display: flex; gap: 5px; margin-bottom: 5px;"><button class="btn-ver" style="background:#ffc107; color:#212529; flex:1; margin-top:0;" onclick="editarReporte(${informe.id})">✍️ Ingresar Firma</button><button class="btn-ver" style="background:#dc3545; flex:1; margin-top:0;" onclick="eliminarReporte(${informe.id})">🗑️ Borrar</button></div>`
+                ? `<div style="display: flex; gap: 5px; margin-bottom: 5px;"><button class="btn-ver" style="background:#ffc107; color:#212529; flex:1; margin-top:0;" onclick="editarReporte(${informe.id})">${textoBotonEdicion}</button><button class="btn-ver" style="background:#dc3545; flex:1; margin-top:0;" onclick="eliminarReporte(${informe.id})">🗑️ Borrar</button></div>`
                 : `<button class="btn-ver" style="background:#dc3545; width:100%; margin-top:0; margin-bottom: 5px;" onclick="eliminarReporte(${informe.id})">🗑️ Borrar</button>`;
 
             const fechaFormateada = new Date(informe.fecha).toLocaleDateString("es-CL");
@@ -1809,71 +1879,220 @@
         });
     }
 
+    function aplicarBloqueoFirmas(informe) {
+        // 1. Bloquear cabecera (Datos de Control)
+        const inputs = ['ctrl-fecha', 'ctrl-tecnico', 'ctrl-supervisor', 'ctrl-serie', 'ctrl-ubicacion', 'ctrl-horas-edit'];
+        inputs.forEach(id => {
+            let el = document.getElementById(id);
+            if(el) {
+                el.disabled = true; 
+                el.style.backgroundColor = '#e9ecef';
+            }
+        });
+
+        // 2. Bloquear botones y campos de la pauta
+        document.querySelectorAll('#lista-tareas input').forEach(input => {
+            input.disabled = true;
+            input.style.backgroundColor = '#e9ecef';
+        });
+        document.querySelectorAll('#lista-tareas .btn-estado').forEach(btn => {
+            btn.disabled = true;
+            btn.style.pointerEvents = 'none';
+        });
+
+        // 3. Bloqueo de firmas con protección anti-errores
+        const canvasTec = document.getElementById('canvas-tecnico');
+        if (canvasTec) {
+            let btnBorrarTec = canvasTec.parentElement.querySelector('button');
+            if (informe.firmaTecnico) {
+                canvasTec.style.pointerEvents = 'none';
+                if(btnBorrarTec) btnBorrarTec.style.display = 'none';
+            } else {
+                canvasTec.style.pointerEvents = 'auto';
+                if(btnBorrarTec) btnBorrarTec.style.display = 'inline-block';
+            }
+        }
+
+        const canvasSup = document.getElementById('canvas-supervisor');
+        if (canvasSup) {
+            let btnBorrarSup = canvasSup.parentElement.querySelector('button');
+            if (informe.firmaSupervisor) {
+                canvasSup.style.pointerEvents = 'none';
+                if(btnBorrarSup) btnBorrarSup.style.display = 'none';
+            } else {
+                canvasSup.style.pointerEvents = 'auto';
+                if(btnBorrarSup) btnBorrarSup.style.display = 'inline-block';
+            }
+        }
+    }
+
 
     function eliminarReporte(id) {
-        if(confirm("¿Estás seguro que deseas eliminar este informe de la nube permanentemente?")) {
-            historialInformes = historialInformes.filter(i => i.id !== id);
-            db.ref('historialInformes').set(historialInformes); 
-            cargarHistorial();
+        if(confirm("¿Deseas enviar este informe a la papelera por 30 días?")) {
+            let informe = historialInformes.find(i => i.id === id);
+            if(informe) {
+                informe.fechaBorrado = Date.now();
+                
+                // 1. Guardar en papelera
+                db.ref('papelera/informes/' + id).set(informe);
+                
+                // 2. Eliminar original del historial
+                historialInformes = historialInformes.filter(i => i.id !== id);
+                db.ref('historialInformes').set(historialInformes); 
+                cargarHistorial();
+            }
         }
     }
 
     function editarReporte(id) {
-        const informe = historialInformes.find(i => i.id === id);
-        
+        const informe = historialInformes.find(i => String(i.id) === String(id));
+    
         if(!informe || !informe.tareas) {
             alert("Este informe es de una versión antigua de la aplicación y no soporta edición interactiva. Solo puede borrarse.");
             return;
         }
 
-        informeEditandoId = id;
+        informeEditandoId = informe.id;
 
-        document.getElementById('selector-maquina').value = informe.maquina;
-        document.getElementById('selector-maquina').disabled = true;
-        
+        const selector = document.getElementById('selector-maquina');
+        if (selector) {
+            selector.value = informe.maquina;
+            selector.disabled = true;
+        }
+    
         cargarDatosMaquina(); 
 
-        document.getElementById('ctrl-fecha').value = informe.fecha.split('T')[0];
-        document.getElementById('ctrl-tecnico').value = informe.inspector || "";
-        document.getElementById('ctrl-supervisor').value = informe.supervisor || "";
-        document.getElementById('ctrl-serie').value = informe.serie || "";
-        document.getElementById('ctrl-ubicacion').value = informe.ubicacion || "";
-        document.getElementById('ctrl-horas-edit').value = informe.horas || 0;
+        const fFecha = document.getElementById('ctrl-fecha');
+        if(fFecha && informe.fecha) fFecha.value = informe.fecha.split('T')[0];
+
+        const fTec = document.getElementById('ctrl-tecnico');
+        if(fTec) fTec.value = informe.inspector || "";
+
+        const fSup = document.getElementById('ctrl-supervisor');
+        if(fSup) fSup.value = informe.supervisor || "";
+
+        const fSerie = document.getElementById('ctrl-serie');
+        if(fSerie) fSerie.value = informe.serie || "";
+
+        const fUbi = document.getElementById('ctrl-ubicacion');
+        if(fUbi) fUbi.value = informe.ubicacion || "";
+
+        const fHoras = document.getElementById('ctrl-horas-edit');
+        if(fHoras) fHoras.value = informe.horas || 0;
 
         actualizarNombresFirmas();
 
+        // -----------------------------------------------------
+        // NUEVA LÓGICA DE FIRMAS (Esquiva el bloqueo del Canvas)
+        // -----------------------------------------------------
+        
+        // FIRMA TÉCNICO
         limpiarFirma('tecnico');
-        if(informe.firmaTecnico) {
-            let imgT = new Image();
-            imgT.onload = () => canvases.tecnico.ctx.drawImage(imgT, 0, 0);
-            imgT.src = informe.firmaTecnico;
+        const canvasTec = document.getElementById('canvas-tecnico');
+        let imgTec = document.getElementById('visor-firma-tec');
+        if (!imgTec) {
+            imgTec = document.createElement('img');
+            imgTec.id = 'visor-firma-tec';
+            imgTec.style.cssText = "border:1px solid #ccc; border-radius:6px; background:#fafafa; width: 100%; max-width: 300px; height: 150px; object-fit: contain; margin: 0 auto; display: none; opacity: 0.6;";
+            canvasTec.parentNode.insertBefore(imgTec, canvasTec);
         }
 
+        if (informe.firmaTecnico) {
+            canvasTec.style.display = 'none'; // Oculta el lienzo
+            imgTec.src = informe.firmaTecnico;
+            imgTec.style.display = 'block';   // Muestra la foto de la firma
+        } else {
+            canvasTec.style.display = 'block';
+            imgTec.style.display = 'none';
+        }
+
+        // FIRMA SUPERVISOR
         limpiarFirma('supervisor');
-        if(informe.firmaSupervisor) {
-            let imgS = new Image();
-            imgS.onload = () => canvases.supervisor.ctx.drawImage(imgS, 0, 0);
-            imgS.src = informe.firmaSupervisor;
+        const canvasSup = document.getElementById('canvas-supervisor');
+        let imgSup = document.getElementById('visor-firma-sup');
+        if (!imgSup) {
+            imgSup = document.createElement('img');
+            imgSup.id = 'visor-firma-sup';
+            imgSup.style.cssText = "border:1px solid #ccc; border-radius:6px; background:#fafafa; width: 100%; max-width: 300px; height: 150px; object-fit: contain; margin: 0 auto; display: none; opacity: 0.6;";
+            canvasSup.parentNode.insertBefore(imgSup, canvasSup);
         }
 
-        document.getElementById('btn-generar').innerText = "Actualizar y Guardar Cambios";
-        document.getElementById('btn-cancelar-edicion').style.display = "inline-block";
-        cambiarPestana('inspeccion');
-        
-        // 👇 ESTA ES LA LÍNEA CRÍTICA QUE APLICA EL BLOQUEO A LOS CAMPOS 👇
-        aplicarBloqueoFirmas(informe);
-        
-        window.scrollTo(0, 0);
-        alert("✍️ Modo Firma Activado. El formulario está bloqueado. Por favor, firme el documento y presione 'Actualizar y Guardar Cambios'.");
-    }
+        if (informe.firmaSupervisor) {
+            canvasSup.style.display = 'none';
+            imgSup.src = informe.firmaSupervisor;
+            imgSup.style.display = 'block';
+        } else {
+            canvasSup.style.display = 'block';
+            imgSup.style.display = 'none';
+        }
+        // -----------------------------------------------------
 
+        const btnGen = document.getElementById('btn-generar');
+        if(btnGen) btnGen.innerText = "Actualizar y Guardar Cambios";
+        
+        const btnCan = document.getElementById('btn-cancelar-edicion');
+        if(btnCan) btnCan.style.display = "inline-block";
+    
+        const btnRechazo = document.getElementById('btn-rechazar-supervisor');
+        if (informe.firmaTecnico && !informe.firmaSupervisor && informe.estado !== "Rechazado por Supervisor") {
+            if(btnRechazo) btnRechazo.style.display = "inline-block";
+        } else {
+            if(btnRechazo) btnRechazo.style.display = "none";
+        }
+
+        cambiarPestana('inspeccion');
+    
+        if (informe.estado === "Rechazado por Supervisor") {
+            quitarBloqueoFirmas();
+            alert("⚠️ ESTE MANTENIMIENTO FUE RECHAZADO.\n\nMotivo del Supervisor: " + (informe.motivoRechazo || "Sin especificar") + "\n\nPor favor, corrija los puntos indicados, vuelva a firmar y envíelo nuevamente.");
+        } else {
+            aplicarBloqueoFirmas(informe);
+            alert("✍️ Modo Firma Activado. El formulario está bloqueado. Por favor, firme el documento y presione 'Actualizar y Guardar Cambios'.");
+        }
+    
+        window.scrollTo(0, 0);
+    }
+	
     function cancelarEdicion() {
+        // 1. Limpiar estado de edición
         informeEditandoId = null;
-        document.getElementById('btn-generar').innerText = "Generar y Guardar Informe";
-        document.getElementById('btn-cancelar-edicion').style.display = "none";
-        document.getElementById('selector-maquina').disabled = false;
+        
+        // 2. Restaurar botones y selectores
+        const btnGen = document.getElementById('btn-generar');
+        if (btnGen) btnGen.innerText = "Generar y Guardar Mantenimiento";
+        
+        const btnCan = document.getElementById('btn-cancelar-edicion');
+        if (btnCan) btnCan.style.display = "none";
+        
+        const btnRechazo = document.getElementById('btn-rechazar-supervisor');
+        if (btnRechazo) btnRechazo.style.display = "none";
+        
+        const selector = document.getElementById('selector-maquina');
+        if (selector) selector.disabled = false;
+        
+        // 3. Desbloquear candados visuales
+        quitarBloqueoFirmas();
+        
+        // 4. Limpieza profunda: Vaciar textos y resetear fechas
+        const fFecha = document.getElementById('ctrl-fecha');
+        if (fFecha) fFecha.valueAsDate = new Date();
+        
+        const fTec = document.getElementById('ctrl-tecnico');
+        if (fTec) fTec.value = "";
+        
+        const fSup = document.getElementById('ctrl-supervisor');
+        if (fSup) fSup.value = "";
+        
+        // 5. Blanquear los lienzos de firmas
+        limpiarFirma('tecnico');
+        limpiarFirma('supervisor');
+        
+        // 6. Recargar la pauta limpia
         cargarDatosMaquina();
-        alert("Edición cancelada.");
+        
+        // 7. LÓGICA DE RUTEO: Devolver al historial y subir la cámara
+        cambiarPestana('historial');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     function abrirModalReparacion(id) {
@@ -1912,7 +2131,6 @@
         let index = historialInformes.findIndex(i => String(i.id) === String(informeParaRepararId));
         if (index === -1) return;
 
-        // 1. Obtener el nombre del técnico reparador y validar
         let inputTecnico = document.getElementById('nombre-tecnico-repara');
         if (!inputTecnico || !inputTecnico.value.trim()) {
             alert("⚠️ Debe ingresar el nombre del técnico que realizó la reparación.");
@@ -1921,7 +2139,6 @@
         }
         let nombreTecnico = inputTecnico.value.trim();
 
-        // 2. Función para leer archivo y convertir a Base64
         function leerArchivoBase64(inputFile) {
             return new Promise((resolve, reject) => {
                 const file = inputFile.files[0];
@@ -1933,46 +2150,58 @@
             });
         }
 
-        // 3. Leer imágenes 'antes' y 'después'
-        const fotoAntes = await leerArchivoBase64(document.getElementById('foto-antes'));
-        const fotoDespues = await leerArchivoBase64(document.getElementById('foto-despues'));
+        mostrarLoader("☁️ Procesando imágenes y subiendo a Firebase Storage...");
+        
+        try {
+            const fotoAntesRaw = await leerArchivoBase64(document.getElementById('foto-antes'));
+            const fotoDespuesRaw = await leerArchivoBase64(document.getElementById('foto-despues'));
 
-        // 4. Procesar las reparaciones marcadas
-        let checks = document.getElementById('lista-pendientes-modal').querySelectorAll('.check-rep');
-        let reparadasAhorita = 0;
-        let ahoraIso = new Date().toISOString();
+            let tempId = historialInformes[index].id;
+            let ahoraUnix = Date.now();
 
-        checks.forEach(chk => {
-            let tareaId = parseInt(chk.getAttribute('data-id'));
-            let tarea = historialInformes[index].tareas.find(t => t.id === tareaId);
+            // SUBIMOS AL DISCO DURO (Extrae las URLs)
+            let urlAntes = await subirImagenAStorage(fotoAntesRaw, `reparaciones/${tempId}_antes_${ahoraUnix}.jpg`);
+            let urlDespues = await subirImagenAStorage(fotoDespuesRaw, `reparaciones/${tempId}_despues_${ahoraUnix}.jpg`);
 
-            if (tarea && chk.checked) {
-                reparadasAhorita++;
-                let notaInput = document.getElementById(`nota-rep-${tareaId}`);
-                let nota = (notaInput && notaInput.value.trim()) || "Reparado sin detalles adicionales.";
+            let checks = document.getElementById('lista-pendientes-modal').querySelectorAll('.check-rep');
+            let reparadasAhorita = 0;
+            let ahoraIso = new Date().toISOString();
 
-                tarea.reparado = true;
-                tarea.fechaReparacion = ahoraIso;
-                tarea.notaReparacion = `${nota} (Realizado por: ${nombreTecnico})`;
-                tarea.fotoAntes = fotoAntes;    // Guardar imagen antes
-                tarea.fotoDespues = fotoDespues; // Guardar imagen después
+            checks.forEach(chk => {
+                let tareaId = parseInt(chk.getAttribute('data-id'));
+                let tarea = historialInformes[index].tareas.find(t => t.id === tareaId);
+
+                if (tarea && chk.checked) {
+                    reparadasAhorita++;
+                    let notaInput = document.getElementById(`nota-rep-${tareaId}`);
+                    let nota = (notaInput && notaInput.value.trim()) || "Reparado sin detalles adicionales.";
+
+                    tarea.reparado = true;
+                    tarea.fechaReparacion = ahoraIso;
+                    tarea.notaReparacion = `${nota} (Realizado por: ${nombreTecnico})`;
+                    if(urlAntes) tarea.fotoAntes = urlAntes;    
+                    if(urlDespues) tarea.fotoDespues = urlDespues; 
+                }
+            });
+
+            if (reparadasAhorita === 0) {
+                ocultarLoader();
+                alert("⚠️ Debe seleccionar al menos una reparación para guardar.");
+                return;
             }
-       });
 
-        if (reparadasAhorita === 0) {
-            alert("⚠️ Debe seleccionar al menos una reparación para guardar.");
-            return;
+            historialInformes[index].estado = calcularEstadoGlobal(historialInformes[index].tareas, historialInformes[index].firmaSupervisor, historialInformes[index].firmaTecnico);
+            await db.ref('historialInformes').set(historialInformes);
+
+            ocultarLoader();
+            cerrarModal();
+            cargarHistorial();
+
+            alert(`✅ Se registraron ${reparadasAhorita} reparación(es) y se subieron las fotos a la nube.`);
+        } catch (error) {
+            ocultarLoader();
+            alert("Error de subida. Asegúrate de tener buena conexión: " + error.message);
         }
-
-        // 5. Actualizar estado global del informe
-        historialInformes[index].estado = calcularEstadoGlobal(historialInformes[index].tareas, historialInformes[index].firmaSupervisor, historialInformes[index].firmaTecnico);
-        await db.ref('historialInformes').set(historialInformes);
-
-        // 6. Cerrar modal y recargar historial
-        cerrarModal();
-        cargarHistorial();
-
-        alert(`✅ Se registraron ${reparadasAhorita} reparación(es) a nombre de ${nombreTecnico} y se actualizaron las imágenes.`);
     }
 
 
@@ -2058,112 +2287,41 @@
         }
     }
 	
-	// --- FUNCIONES PARA BLOQUEAR TODO EXCEPTO LAS FIRMAS FALTANTES ---
-    function aplicarBloqueoFirmas(informe) {
-        // 1. Bloquear los datos generales de texto (arriba)
-        const inputs = ['ctrl-fecha', 'ctrl-tecnico', 'ctrl-supervisor', 'ctrl-serie', 'ctrl-ubicacion', 'ctrl-horas-edit'];
-        inputs.forEach(id => {
-            let el = document.getElementById(id);
-            if(el) {
-                el.readOnly = true;
-                el.style.backgroundColor = '#e9ecef';
-                el.style.pointerEvents = 'none';
-            }
-        });
-
-        // 2. Si el técnico ya firmó, bloqueamos su cuadro y ocultamos su botón de borrar
-        const canvasTec = document.getElementById('canvas-tecnico');
-        if (informe.firmaTecnico) {
-            canvasTec.style.pointerEvents = 'none';
-            canvasTec.nextElementSibling.nextElementSibling.style.display = 'none'; 
-        } else {
-            canvasTec.style.pointerEvents = 'auto';
-            canvasTec.nextElementSibling.nextElementSibling.style.display = 'inline-block';
-        }
-
-        // 3. Si el supervisor ya firmó, bloqueamos su cuadro y ocultamos su botón de borrar
-        const canvasSup = document.getElementById('canvas-supervisor');
-        if (informe.firmaSupervisor) {
-            canvasSup.style.pointerEvents = 'none';
-            canvasSup.nextElementSibling.nextElementSibling.style.display = 'none';
-        } else {
-            canvasSup.style.pointerEvents = 'auto';
-            canvasSup.nextElementSibling.nextElementSibling.style.display = 'inline-block';
-        }
-    }
-
-    // --- FUNCIONES PARA BLOQUEAR TODO EXCEPTO LAS FIRMAS FALTANTES ---
-    function aplicarBloqueoFirmas(informe) {
-        // 1. Bloquear cabecera (Datos de Control) usando .disabled
-        const inputs = ['ctrl-fecha', 'ctrl-tecnico', 'ctrl-supervisor', 'ctrl-serie', 'ctrl-ubicacion', 'ctrl-horas-edit'];
-        inputs.forEach(id => {
-            let el = document.getElementById(id);
-            if(el) {
-                el.disabled = true; // Bloqueo total nativo
-                el.style.backgroundColor = '#e9ecef';
-            }
-        });
-
-        // 2. Bloquear botones y campos de texto de la pauta de revisión (Anomalías)
-        document.querySelectorAll('#lista-tareas input').forEach(input => {
-            input.disabled = true;
-            input.style.backgroundColor = '#e9ecef';
-        });
-        document.querySelectorAll('#lista-tareas .btn-estado').forEach(btn => {
-            btn.disabled = true;
-            btn.style.pointerEvents = 'none';
-        });
-
-        // 3. Bloquear la firma del TÉCNICO si ya existe
-        const canvasTec = document.getElementById('canvas-tecnico');
-        const btnBorrarTec = canvasTec.parentElement.querySelector('button'); // Busca el botón seguro
-        if (informe.firmaTecnico) {
-            canvasTec.style.pointerEvents = 'none';
-            canvasTec.style.opacity = '0.5'; // Lo pone un poco transparente para que se note bloqueado
-            if(btnBorrarTec) btnBorrarTec.style.display = 'none';
-        } else {
-            canvasTec.style.pointerEvents = 'auto';
-            canvasTec.style.opacity = '1';
-            if(btnBorrarTec) btnBorrarTec.style.display = 'inline-block';
-        }
-
-        // 4. Bloquear la firma del SUPERVISOR si ya existe
-        const canvasSup = document.getElementById('canvas-supervisor');
-        const btnBorrarSup = canvasSup.parentElement.querySelector('button'); // Busca el botón seguro
-        if (informe.firmaSupervisor) {
-            canvasSup.style.pointerEvents = 'none';
-            canvasSup.style.opacity = '0.5'; 
-            if(btnBorrarSup) btnBorrarSup.style.display = 'none';
-        } else {
-            canvasSup.style.pointerEvents = 'auto';
-            canvasSup.style.opacity = '1';
-            if(btnBorrarSup) btnBorrarSup.style.display = 'inline-block';
-        }
-    }
+	
 
     function quitarBloqueoFirmas() {
-        // Restaurar a la normalidad los datos generales
         const inputs = ['ctrl-fecha', 'ctrl-tecnico', 'ctrl-supervisor', 'ctrl-serie', 'ctrl-ubicacion', 'ctrl-horas-edit'];
         inputs.forEach(id => {
             let el = document.getElementById(id);
             if(el) {
-                el.disabled = false; // Quita el bloqueo
+                el.disabled = false;
                 el.style.backgroundColor = '#fff';
             }
         });
 
-        // Restaurar estado de los canvas a la normalidad
+        // Restaura el lienzo del TÉCNICO y oculta la foto
         const canvasTec = document.getElementById('canvas-tecnico');
-        canvasTec.style.pointerEvents = 'auto';
-        canvasTec.style.opacity = '1';
-        let btnBorrarTec = canvasTec.parentElement.querySelector('button');
-        if(btnBorrarTec) btnBorrarTec.style.display = 'inline-block';
+        if (canvasTec) {
+            canvasTec.style.display = 'block';
+            canvasTec.style.pointerEvents = 'auto';
+            canvasTec.style.opacity = '1';
+            let btnBorrarTec = canvasTec.parentElement.querySelector('button');
+            if(btnBorrarTec) btnBorrarTec.style.display = 'inline-block';
+        }
+        let imgTec = document.getElementById('visor-firma-tec');
+        if(imgTec) imgTec.style.display = 'none';
 
+        // Restaura el lienzo del SUPERVISOR y oculta la foto
         const canvasSup = document.getElementById('canvas-supervisor');
-        canvasSup.style.pointerEvents = 'auto';
-        canvasSup.style.opacity = '1';
-        let btnBorrarSup = canvasSup.parentElement.querySelector('button');
-        if(btnBorrarSup) btnBorrarSup.style.display = 'inline-block';
+        if (canvasSup) {
+            canvasSup.style.display = 'block';
+            canvasSup.style.pointerEvents = 'auto';
+            canvasSup.style.opacity = '1';
+            let btnBorrarSup = canvasSup.parentElement.querySelector('button');
+            if(btnBorrarSup) btnBorrarSup.style.display = 'inline-block';
+        }
+        let imgSup = document.getElementById('visor-firma-sup');
+        if(imgSup) imgSup.style.display = 'none';
     }
 	
 	function migrarEstadosInformes() {
@@ -2226,7 +2384,87 @@
         mostrarHistorialFiltrado(informesFiltrados);
     }
 
+    function actualizarEstadoEquiposGeneral() {
+        var contenedor = document.getElementById('contenedor-estado-equipos');
+        if (!contenedor) return;
+
+        contenedor.style.display = "flex";
+        contenedor.style.flexDirection = "column";
+        contenedor.style.gap = "8px";
+
+        var htmlList = "";
+        var hoy = new Date();
+        var hayEquipos = false;
+
+        for (var maq in baseDeDatos) {
+            hayEquipos = true;
+            var estado = estadoMaquinas[maq] || { horas: 0, fechaUltimoMaint: null };
+            var datosBase = baseDeDatos[maq];
+            var codigoEmpresa = (datosBase && datosBase.meta && datosBase.meta.codigo) ? datosBase.meta.codigo : "S/N";
+        
+            var diferenciaDias = 0;
+            if (estado.fechaUltimoMaint) {
+                var fechaMaint = new Date(estado.fechaUltimoMaint + "T00:00:00");
+                diferenciaDias = Math.floor((hoy - fechaMaint) / (1000 * 60 * 60 * 24));
+                if (diferenciaDias < 0) diferenciaDias = 0;
+            }
+
+            var informesDelEquipo = historialInformes.filter(function(inf) {
+                var infCodigo = (inf.meta && inf.meta.codigo) ? inf.meta.codigo : "";
+                var nombreInforme = (inf.maquina || "").trim().toUpperCase();
+                var nombreActual = maq.trim().toUpperCase();
+                return (nombreInforme === nombreActual) || (infCodigo === codigoEmpresa && codigoEmpresa !== "S/N" && codigoEmpresa !== "");
+            });
+
+            informesDelEquipo.sort(function(a, b) { return b.id - a.id; });
+            var ultimoInforme = informesDelEquipo.length > 0 ? informesDelEquipo[0] : null;
+
+            var pendientes = 0;
+            if (ultimoInforme && ultimoInforme.tareas) {
+                ultimoInforme.tareas.forEach(function(t) {
+                    if (t.estadoOriginal !== 'Bueno' && !t.reparado) pendientes++;
+                });
+            }
+
+            var horasUso = estado.horas || 0;
+            var tieneInformes = informesDelEquipo.length > 0;
  
+            var colorBorde = "#28a745"; 
+            var estadoTxt = "🟢 Óptimo";
+            var detallesTxt = "Horas: " + horasUso + "/40 | Días: " + diferenciaDias + "/90";
+
+            if (!tieneInformes) {
+                colorBorde = "#6c757d"; 
+                estadoTxt = "⚪ Sin Inspección";
+                detallesTxt = "Equipo sin mantenimientos previos.";
+            } else if (pendientes > 0) {
+                colorBorde = "#dc3545"; 
+                estadoTxt = "🛑 " + pendientes + " Fallas Pendientes";
+                detallesTxt = "Requiere atención. (Uso: " + horasUso + " hrs)";
+            } else if (horasUso >= 40 || diferenciaDias >= 90) {
+                colorBorde = "#ffc107"; 
+                estadoTxt = "⚠ Toca Mantenimiento";
+                detallesTxt = "Límite excedido. Horas: " + horasUso + "/40 | Días: " + diferenciaDias + "/90";
+            }
+      
+            // SOLUCIÓN: Ocultamos las comillas de las pulgadas (") para que no rompan el clic
+            var maqSeguroJS = maq.replace(/'/g, "\\'"); 
+            var maqSeguroHTML = maqSeguroJS.replace(/"/g, "&quot;");
+            
+            // TARJETA CLICLEABLE BLINDADA
+            htmlList += '<div class="item-estado-maq" onclick="seleccionarMaquinaDesdeDashboard(\'' + maqSeguroHTML + '\')" style="cursor: pointer; background: #f8f9fa; padding: 10px; border-radius: 6px; border-left: 4px solid ' + colorBorde + '; font-size: 0.9em; width: 100%; box-sizing: border-box; transition: 0.2s;" onmouseover="this.style.background=\'#e9ecef\'" onmouseout="this.style.background=\'#f8f9fa\'">' +
+                '<strong>' + maq + '</strong> (Código: <span style="color:#0056b3;">' + codigoEmpresa + '</span>)<br>' +
+                '<span style="color: #444;">Estado: <strong>' + estadoTxt + '</strong> | ' + detallesTxt + '</span>' +
+            '</div>';
+        }
+    
+        if (!hayEquipos) {
+            htmlList = "<p style='color: #666; font-size: 0.9em;'>No hay equipos registrados en el sistema todavía.</p>";
+        }
+        contenedor.innerHTML = htmlList;
+		var inputBuscador = document.getElementById('buscador-estado-general');
+        if (inputBuscador) inputBuscador.value = "";
+    }
 
 	
 	function mostrarHistorialFiltrado(informes) {
@@ -2249,15 +2487,12 @@
                 colorBg = "#fff3cd"; colorText = "#856404";
             } else if (estadoTexto.includes("Rechazado")) {
                 colorBg = "#f8d7da"; colorText = "#721c24";
-            } else if (estadoTexto === "Pendiente Firma Supervisor" || estadoTexto === "Falta firma técnico y supervisor") {
+            } else if (estadoTexto.includes("Falta firma")) {
                 colorBg = "#cce5ff"; colorText = "#004085";
-            } else if (estadoTexto === "Falta firma técnico") {
-                colorBg = "#d1ecf1"; colorText = "#0c5460";
-            } else if (estadoTexto === "Falta firma supervisor") {
-                colorBg = "#bee5eb"; colorText = "#0c5460";
             }
 
-            let necesitaReparar = estadoTexto.includes("Rechazado") || estadoTexto.includes("Pendientes");
+            let tieneTareasConFalla = informe.tareas && informe.tareas.some(t => t.estadoOriginal !== 'Bueno' && !t.reparado);
+            let necesitaReparar = estadoTexto.includes("Rechazado") || estadoTexto.includes("Pendientes") || tieneTareasConFalla;
 
             let botonPlazo = necesitaReparar && informe.tareas
                 ? `<button class="btn-ver" style="background:#856404; color:#fff; border:none; padding:8px 12px; border-radius:4px; cursor:pointer; font-weight:bold; margin-bottom:5px; width:100%;" onclick="abrirModalPlazo(${informe.id})">📅 Plazo Operaciones</button>`
@@ -2296,18 +2531,18 @@
             div.className = "historial-item";
             div.style.cssText = `background: ${colorBg}; color: ${colorText}; padding: 10px; border-radius: 6px; margin-bottom: 10px; border-left: 4px solid ${colorText}; display: flex; justify-content: space-between; align-items: center;`;
 
-                div.innerHTML = `
-                    <div style="flex: 1; padding-right: 10px;">
-                        <strong>${fechaFormateada} - ${informe.maquina}</strong><br>
-                        <small>Insp: ${informe.inspector}</small><br>
-                        <span style="font-weight: bold;">Estado: ${estadoTexto}</span>
-                        ${textoPlazos}
-                    </div>
-                        <div style="display: flex; flex-direction: column; width: 170px; gap: 5px; text-align: right;">
-                        ${botonPlazo}
-                        ${botonReparar}
-                        ${botonRepuestos}
-                        ${divBotonesEdicion}
+            div.innerHTML = `
+                <div style="flex: 1; padding-right: 10px;">
+                    <strong>${fechaFormateada} - ${informe.maquina}</strong><br>
+                    <small>Insp: ${informe.inspector}</small><br>
+                    <span style="font-weight: bold;">Estado: ${estadoTexto}</span>
+                    ${textoPlazos}
+                </div>
+                <div style="display: flex; flex-direction: column; width: 170px; gap: 5px; text-align: right;">
+                    ${botonPlazo}
+                    ${botonReparar}
+                    ${botonRepuestos}
+                    ${divBotonesEdicion}
                     <button class="btn-ver" style="margin-top:0;" onclick="verReporteAntiguo(${informe.id})">📄 Abrir Informe</button>
                 </div>
             `;
@@ -2315,71 +2550,7 @@
         });
     }
 
-	function actualizarEstadoEquiposGeneral() {
-        var contenedor = document.getElementById('contenedor-estado-equipos');
-        if (!contenedor) return;
-
-        var htmlList = "";
-        var hoy = new Date();
-        var hayEquipos = false;
-
-        for (var maq in estadoMaquinas) {
-            hayEquipos = true;
-            var estado = estadoMaquinas[maq];
-            var datosBase = baseDeDatos[maq];
-            var codigoEmpresa = (datosBase && datosBase.meta && datosBase.meta.codigo) ? datosBase.meta.codigo : "S/N";
-            
-            // Calculamos días transcurridos
-            var diferenciaDias = 0;
-            if (estado.fechaUltimoMaint) {
-                var fechaMaint = new Date(estado.fechaUltimoMaint + "T00:00:00");
-                diferenciaDias = Math.floor((hoy - fechaMaint) / (1000 * 60 * 60 * 24));
-                if (diferenciaDias < 0) diferenciaDias = 0;
-            }
-
-            // Calculamos fallas pendientes
-            var pendientes = 0;
-            historialInformes.forEach(function(inf) {
-                if (inf.maquina === maq && inf.tareas) {
-                    inf.tareas.forEach(function(t) {
-                        if (t.estadoOriginal !== 'Bueno' && !t.reparado) pendientes++;
-                    });
-                }
-            });
-
-            var horasUso = estado.horas || 0;
-            var tieneInformes = historialInformes.some(function(inf) { return inf.maquina === maq; });
-
-            var colorBorde = "#28a745"; 
-            var estadoTxt = "🟢 Óptimo";
-            var detallesTxt = "Horas: " + horasUso + "/40 | Días: " + diferenciaDias + "/90";
-
-            // Lógica de semáforo
-            if (!tieneInformes && !estado.fechaUltimoMaint) {
-                colorBorde = "#6c757d"; 
-                estadoTxt = "⚪ Sin Inspección";
-                detallesTxt = "Equipo nuevo, sin mantenimiento previo.";
-            } else if (pendientes > 0) {
-                colorBorde = "#dc3545"; 
-                estadoTxt = "🛑 " + pendientes + " Falla(s) Pendiente(s)";
-                detallesTxt = "Requiere reparación. (Uso: " + horasUso + " hrs)";
-            } else if (horasUso >= 40 || diferenciaDias >= 90) {
-                colorBorde = "#ffc107"; 
-                estadoTxt = "⚠️️ Toca Mantenimiento";
-                detallesTxt = "Límite excedido. Horas: " + horasUso + "/40 | Días: " + diferenciaDias + "/90";
-            }
-          
-            htmlList += "<div class='item-estado-maq' style='background: #f8f9fa; padding: 10px; border-radius: 6px; border-left: 4px solid " + colorBorde + "; font-size: 0.9em; width: 100%; box-sizing: border-box;'>" +
-                "<strong>" + maq + "</strong> (Código: <span style='color:#0056b3;'>" + codigoEmpresa + "</span>)<br>" +
-                "<span style='color: #444;'>Estado: <strong>" + estadoTxt + "</strong> | " + detallesTxt + "</span>" +
-            "</div>";
-        }
-        
-        if (!hayEquipos) {
-            htmlList = "<p style='color: #666; font-size: 0.9em;'>No hay equipos registrados en el sistema todavía.</p>";
-        }
-        contenedor.innerHTML = htmlList;
-    }
+	
 	
 	let informeParaPlazoId = null;
 
@@ -2443,88 +2614,6 @@
         });
     }
 
-    function actualizarEstadoEquiposGeneral() {
-        var contenedor = document.getElementById('contenedor-estado-equipos');
-        if (!contenedor) return;
-
-        contenedor.style.display = "flex";
-        contenedor.style.flexDirection = "column";
-        contenedor.style.gap = "8px";
-
-        var htmlList = "";
-        var hoy = new Date();
-        var hayEquipos = false;
-
-        for (var maq in baseDeDatos) {
-            hayEquipos = true;
-            var estado = estadoMaquinas[maq] || { horas: 0, fechaUltimoMaint: null };
-            var datosBase = baseDeDatos[maq];
-            var codigoEmpresa = (datosBase && datosBase.meta && datosBase.meta.codigo) ? datosBase.meta.codigo : "S/N";
-        
-            var diferenciaDias = 0;
-            if (estado.fechaUltimoMaint) {
-                var fechaMaint = new Date(estado.fechaUltimoMaint + "T00:00:00");
-                diferenciaDias = Math.floor((hoy - fechaMaint) / (1000 * 60 * 60 * 24));
-                if (diferenciaDias < 0) diferenciaDias = 0;
-            }
-
-            // CORRECCIÓN FINAL: Ignora diferencias de mayúsculas/minúsculas en el nombre
-            var informesDelEquipo = historialInformes.filter(function(inf) {
-                var infCodigo = (inf.meta && inf.meta.codigo) ? inf.meta.codigo : "";
-                
-                var nombreInforme = (inf.maquina || "").trim().toUpperCase();
-                var nombreActual = maq.trim().toUpperCase();
-                
-                var coincideNombre = (nombreInforme === nombreActual);
-                var coincideCodigo = (infCodigo === codigoEmpresa && codigoEmpresa !== "S/N" && codigoEmpresa !== "");
-                
-                return coincideNombre || coincideCodigo;
-            });
-
-            informesDelEquipo.sort(function(a, b) { return b.id - a.id; });
-            var ultimoInforme = informesDelEquipo.length > 0 ? informesDelEquipo[0] : null;
-
-            var pendientes = 0;
-            if (ultimoInforme && ultimoInforme.tareas) {
-                ultimoInforme.tareas.forEach(function(t) {
-                    if (t.estadoOriginal !== 'Bueno' && !t.reparado) pendientes++;
-                });
-            }
-
-            var horasUso = estado.horas || 0;
-            var tieneInformes = informesDelEquipo.length > 0;
- 
-            var colorBorde = "#28a745"; 
-            var estadoTxt = "🟢 Óptimo";
-            var detallesTxt = "Horas: " + horasUso + "/40 | Días: " + diferenciaDias + "/90";
-
-            if (!tieneInformes) {
-                colorBorde = "#6c757d"; 
-                estadoTxt = "⚪ Sin Inspección";
-                detallesTxt = "Equipo sin informes de mantenimiento previos.";
-            } else if (pendientes > 0) {
-                colorBorde = "#dc3545"; 
-                estadoTxt = "🛑 " + pendientes + " Reparaciones Pendiente(s)";
-                detallesTxt = "Requiere reparación. (Uso: " + horasUso + " hrs)";
-            } else if (horasUso >= 40 || diferenciaDias >= 90) {
-                colorBorde = "#ffc107"; 
-                estadoTxt = "⚠ Toca Mantenimiento";
-                detallesTxt = "Límite excedido. Horas: " + horasUso + "/40 | Días: " + diferenciaDias + "/90";
-            }
-      
-            htmlList += "<div class='item-estado-maq' style='background: #f8f9fa; padding: 10px; border-radius: 6px; border-left: 4px solid " + colorBorde + "; font-size: 0.9em; width: 100%; box-sizing: border-box;'>" +
-                "<strong>" + maq + "</strong> (Código: <span style='color:#0056b3;'>" + codigoEmpresa + "</span>)<br>" +
-                "<span style='color: #444;'>Estado: <strong>" + estadoTxt + "</strong> | " + detallesTxt + "</span>" +
-            "</div>";
-        }
-    
-        if (!hayEquipos) {
-            htmlList = "<p style='color: #666; font-size: 0.9em;'>No hay equipos registrados en el sistema todavía.</p>";
-        }
-        contenedor.innerHTML = htmlList;
-		var inputBuscador = document.getElementById('buscador-estado-general');
-        if (inputBuscador) inputBuscador.value = "";
-    }
 	
 	// NUEVA FUNCIÓN PARA EL BUSCADOR
     function filtrarEstadoGeneral() {
@@ -2550,6 +2639,212 @@
         selector.size = 1; // Cierra la lista expandida
         inicializarSelectorMaquinas(""); // Restaura todos los equipos manteniendo tu selección
     }
+	
+	// Rutina de Auto-Limpieza (Revisa y borra lo que tenga más de 30 días)
+    function limpiarPapeleraAutomatica(papelera) {
+        let hoy = Date.now();
+        let treintaDiasEnMs = 30 * 24 * 60 * 60 * 1000;
+
+        if(papelera.equipos) {
+            for (let key in papelera.equipos) {
+                if (hoy - papelera.equipos[key].fechaBorrado > treintaDiasEnMs) {
+                    delete papelera.equipos[key];
+                    db.ref('papelera/equipos/' + key).remove();
+                }
+            }
+        }
+        if(papelera.informes) {
+            for (let key in papelera.informes) {
+                if (hoy - papelera.informes[key].fechaBorrado > treintaDiasEnMs) {
+                    delete papelera.informes[key];
+                    db.ref('papelera/informes/' + key).remove();
+                }
+            }
+        }
+        return papelera;
+    }
+
+    // Abre el modal y dibuja los elementos recuperables
+    function abrirPapelera() {
+        db.ref('papelera').once('value').then(snapshot => {
+            let papelera = snapshot.val() || { equipos: {}, informes: {} };
+            
+            // Limpia automáticamente los archivos viejos en segundo plano
+            papelera = limpiarPapeleraAutomatica(papelera);
+
+            let html = "<h4 style='color:#0056b3; margin-top:0;'>Equipos Eliminados</h4>";
+            let hayEquipos = false;
+            for(let key in papelera.equipos) {
+                hayEquipos = true;
+                let dataEq = papelera.equipos[key];
+                let fecha = new Date(dataEq.fechaBorrado).toLocaleDateString('es-CL');
+                html += `<div style="padding:8px; border-bottom:1px solid #ccc; display:flex; justify-content:space-between; align-items:center;">
+                    <span style="font-size:0.9em;"><strong>${dataEq.idOriginal}</strong> <br><small>Borrado el: ${fecha}</small></span>
+                    <button onclick="restaurarEquipo('${key}')" style="background:#28a745; color:white; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; font-weight:bold;">Restaurar</button>
+                </div>`;
+            }
+            if(!hayEquipos) html += "<p style='font-size:0.85em; color:#666; margin-bottom:15px;'>No hay equipos en la papelera.</p>";
+            
+            html += "<h4 style='color:#0056b3; margin-top:15px;'>Informes Eliminados</h4>";
+            let hayInformes = false;
+            for(let key in papelera.informes) {
+                hayInformes = true;
+                let inf = papelera.informes[key];
+                let fechaStr = new Date(inf.fechaBorrado).toLocaleDateString('es-CL');
+                html += `<div style="padding:8px; border-bottom:1px solid #ccc; display:flex; justify-content:space-between; align-items:center;">
+                    <span style="font-size:0.9em;"><strong>Informe de: ${inf.maquina}</strong> <br><small>Borrado el: ${fechaStr}</small></span>
+                    <button onclick="restaurarInforme(${key})" style="background:#28a745; color:white; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; font-weight:bold;">Restaurar</button>
+                </div>`;
+            }
+            if(!hayInformes) html += "<p style='font-size:0.85em; color:#666;'>No hay informes en la papelera.</p>";
+
+            document.getElementById('contenido-papelera').innerHTML = html;
+            document.getElementById('modal-papelera').style.display = 'flex';
+        });
+    }
+	
+	function restaurarEquipo(llaveFirebase) {
+        db.ref('papelera/equipos/' + llaveFirebase).once('value').then(snapshot => {
+            let data = snapshot.val();
+            if(data) {
+                let nombreOriginal = data.idOriginal;
+                
+                baseDeDatos[nombreOriginal] = data.datos;
+                if(data.estado) estadoMaquinas[nombreOriginal] = data.estado;
+                
+                db.ref('baseDeDatos').set(baseDeDatos);
+                if(data.estado) db.ref('estadoMaquinas/' + nombreOriginal).set(estadoMaquinas[nombreOriginal]);
+                
+                db.ref('papelera/equipos/' + llaveFirebase).remove(); // Lo saca de la papelera
+                
+                alert("✅ Equipo restaurado con éxito.");
+                abrirPapelera(); // Refresca la ventana de la papelera
+                inicializarSelectorMaquinas();
+                listarEquiposEnCreador();
+            }
+        });
+    }
+	
+	function restaurarInforme(id) {
+        db.ref('papelera/informes/' + id).once('value').then(snapshot => {
+            let informe = snapshot.val();
+            if(informe) {
+                delete informe.fechaBorrado; // Le quitamos la marca de borrado
+                
+                historialInformes.unshift(informe);
+                historialInformes.sort((a,b) => b.id - a.id);
+                
+                db.ref('historialInformes').set(historialInformes);
+                db.ref('papelera/informes/' + id).remove(); // Lo saca de la papelera
+                
+                alert("✅ Informe restaurado con éxito.");
+                abrirPapelera();
+                cargarHistorial();
+            }
+        });
+    }
+	
+	function cerrarPapelera() { 
+        document.getElementById('modal-papelera').style.display = 'none'; 
+    }
+	
+	function rechazarPorSupervisor() {
+        if(!informeEditandoId) return;
+    
+        let motivo = prompt("Indique el motivo del rechazo (Ej: La máquina sigue sucia, falta engrasar, etc.):");
+        if(motivo === null) return; 
+    
+        let index = historialInformes.findIndex(i => i.id === informeEditandoId);
+        if(index > -1) {
+            historialInformes[index].estado = "Rechazado por Supervisor";
+            historialInformes[index].motivoRechazo = motivo;
+            historialInformes[index].firmaTecnico = null; 
+        
+            db.ref('historialInformes').set(historialInformes);
+        
+            alert("❌ El mantenimiento ha sido rechazado y devuelto al técnico.");
+            
+            // RUTEO Y LIMPIEZA TOTAL: Usamos la rutina que ya creamos
+            cancelarEdicion(); 
+        }
+    }
+	
+	let maquinaSeleccionadaModal = "";
+
+    function seleccionarMaquinaDesdeDashboard(nombreMaquina) {
+        maquinaSeleccionadaModal = nombreMaquina;
+        const estado = estadoMaquinas[nombreMaquina] || { horas: 0, fechaUltimoMaint: "Sin registro" };
+        const datosBase = baseDeDatos[nombreMaquina] || { meta: {} };
+        const codigoEmpresa = datosBase.meta.codigo || "S/N";
+
+        // Filtramos los informes que pertenecen a esta máquina
+        const informesMaq = historialInformes.filter(inf => {
+            let infCodigo = (inf.meta && inf.meta.codigo) ? inf.meta.codigo : "";
+            let nombreInforme = (inf.maquina || "").trim().toUpperCase();
+            let nombreActual = nombreMaquina.trim().toUpperCase();
+            return (nombreInforme === nombreActual) || (infCodigo === codigoEmpresa && codigoEmpresa !== "S/N");
+        });
+
+        let html = `
+            <div style="background:#e9f2fb; padding:10px; border-radius:6px; margin-bottom:15px; font-size:0.9em;">
+                <p style="margin:0 0 5px 0;"><strong>Código:</strong> ${codigoEmpresa}</p>
+                <p style="margin:0 0 5px 0;"><strong>Horas Acumuladas:</strong> ${estado.horas} hrs</p>
+                <p style="margin:0;"><strong>Último Mantenimiento:</strong> ${estado.fechaUltimoMaint || 'Sin registro'}</p>
+            </div>
+            <h4 style="color:#0056b3; margin-bottom:10px; font-size:1em;">📂 Historial de Informes (${informesMaq.length})</h4>
+        `;
+
+        if (informesMaq.length === 0) {
+            html += `<p style="font-size:0.85em; color:#666;">No hay informes registrados para esta máquina todavía.</p>`;
+        } else {
+            informesMaq.forEach(inf => {
+                let fechaStr = new Date(inf.fecha).toLocaleDateString('es-CL');
+                let estadoInf = inf.estado || "Óptimo";
+                html += `
+                    <div style="background:#f8f9fa; padding:8px; border:1px solid #ddd; border-radius:4px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <strong style="font-size:0.9em;">📅 ${fechaStr}</strong><br>
+                            <small>Insp: ${inf.inspector} | Estado: <strong>${estadoInf}</strong></small>
+                        </div>
+                        <button onclick="verReporteAntiguo(${inf.id}); cerrarDetalleMaquina();" style="background:#17a2b8; color:white; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; font-size:0.85em; font-weight:bold;">📄 Ver</button>
+                    </div>
+                `;
+            });
+        }
+
+        document.getElementById('detalle-titulo-maq').innerText = `📊 ${nombreMaquina}`;
+        document.getElementById('detalle-contenido-maq').innerHTML = html;
+        document.getElementById('modal-detalle-maquina').style.display = 'flex';
+    }
+
+    function cerrarDetalleMaquina() {
+        document.getElementById('modal-detalle-maquina').style.display = 'none';
+    }
+
+	
+	// ESTA ES LA FUNCIÓN NUEVA QUE TE FALTABA
+    function irAHistorialDesdeDetalle() {
+        if (!maquinaSeleccionadaModal) return;
+        let maq = maquinaSeleccionadaModal;
+        cerrarDetalleMaquina();
+    
+        // 1. Nos movemos a la pestaña de Historial
+        cambiarPestana('historial'); 
+    
+        // 2. Colocamos el nombre de la máquina en el buscador general y filtramos
+        const buscador = document.getElementById('buscador-general');
+        if (buscador) {
+            buscador.value = maq;
+            filtrarGeneral(); 
+        }
+    
+        // 3. Cerramos el panel general y subimos la pantalla
+        const panelGeneral = document.getElementById('panel-estado-general');
+        if(panelGeneral) panelGeneral.removeAttribute('open');
+    
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
 </script>
 </body>
 </html>
