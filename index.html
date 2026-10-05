@@ -886,7 +886,7 @@
         const datos = baseDeDatos[maquinaActual];
         const estado = estadoMaquinas[maquinaActual];
         
-        document.getElementById('info-tecnica-equipo').innerHTML = `
+       document.getElementById('info-tecnica-equipo').innerHTML = `
             <table class="tabla-tecnica">
                 <tr>
                     <td class="td-bg">Código Equipo:</td><td><strong>${datos.meta.codigo}</strong></td>
@@ -894,12 +894,7 @@
                     <td class="td-bg">Modelo:</td><td><strong>${datos.meta.modelo}</strong></td>
                 </tr>
                 <tr>
-                    <td class="td-bg">Potencia:</td><td>${datos.meta.potencia}</td>
-                    <td class="td-bg">Tensión / Freq:</td><td>${datos.meta.tension}</td>
-                    <td class="td-bg">Accesorio:</td><td>${datos.meta.diametro}</td>
-                </tr>
-                <tr>
-                    <td class="td-bg">Velocidad:</td><td colspan="5">${datos.meta.velocidad || "-"}</td>
+                    <td class="td-bg">Potencia:</td><td colspan="5">${datos.meta.potencia}</td>
                 </tr>
                 <tr>
                     <td class="td-bg">Número de Serie:</td><td colspan="5">${datos.meta.serie || "-"}</td>
@@ -1690,11 +1685,8 @@
                     <tr><td class="col-header">Tipo de maquina</td><td>${informe.meta.tipo}</td></tr>
                     <tr><td class="col-header">Marca</td><td>${informe.meta.marca}</td></tr>
                     <tr><td class="col-header">Modelo</td><td>${informe.meta.modelo}</td></tr>
-                    <tr><td class="col-header">Número de serie</td><td>${informe.serie}</td></tr>
-                    <tr><td class="col-header">Tensión / Frecuencia</td><td>${informe.meta.tension}</td></tr>
-                    <tr><td class="col-header">Accesorio / Diámetro</td><td>${informe.meta.diametro}</td></tr>
                     <tr><td class="col-header">Potencia</td><td>${informe.meta.potencia}</td></tr>
-                    <tr><td class="col-header">Velocidad sin carga</td><td>${informe.meta.velocidad}</td></tr>
+                    <tr><td class="col-header">Número de serie</td><td>${informe.serie}</td></tr>
                     <tr><td class="col-header">Ubicación</td><td>${informe.ubicacion}</td></tr>
                 </table>
 
@@ -2486,7 +2478,7 @@
                 detallesTxt = "Equipo sin mantenimientos previos.";
             } else if (pendientes > 0) {
                 colorBorde = "#dc3545"; 
-                estadoTxt = "🛑 " + pendientes + " Reparaciones Pendientes";
+                estadoTxt = "🛑 " + pendientes + " RPendientes";
                 detallesTxt = "Requiere atención. (Uso: " + horasUso + " hrs)";
             } else if (horasUso >= 40 || diferenciaDias >= 90) {
                 colorBorde = "#ffc107"; 
