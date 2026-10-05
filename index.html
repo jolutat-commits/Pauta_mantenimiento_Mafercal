@@ -906,8 +906,18 @@
         `;
  
         let isEditing = informeEditandoId !== null;
-        let disabledPointer = isEditing ? 'style="pointer-events:none; opacity:0.6;"' : '';
-        let disabledInput = isEditing ? 'readonly style="background:#e9ecef;"' : '';
+        let isLocked = isEditing;
+        
+        // Si estamos editando pero fue RECHAZADO, NO bloqueamos la pauta
+        if (isEditing) {
+            let infAnt = historialInformes.find(i => String(i.id) === String(informeEditandoId));
+            if (infAnt && infAnt.estado === "Rechazado por Supervisor") {
+                isLocked = false; 
+            }
+        }
+
+        let disabledPointer = isLocked ? 'style="pointer-events:none; opacity:0.6;"' : '';
+        let disabledInput = isLocked ? 'readonly style="background:#e9ecef;"' : '';
 
         if(!isEditing) {
             let inpSerie = document.getElementById('ctrl-serie');
@@ -996,28 +1006,58 @@
 
     function actualizarHorometro(estado) {
         const statusAlerta = document.getElementById('status-alerta');
+        document.getElementById('horas-actuales').value = (estado.horas || 0) + " hrs";
 
-        // Mostrar horas acumuladas actuales
-        document.getElementById('horas-actuales').value = estado.horas + " hrs";
-
-        if (estado.fechaUltimoMaint) {
-            let fechaUltimo = new Date(estado.fechaUltimoMaint);
-            document.getElementById('fecha-ultimo-maint').value = fechaUltimo.toLocaleDateString('es-ES');
+        // 1. Buscar el estado físico real en el historial de esta máquina
+        let nombreBase = maquinaActual.trim().toUpperCase();
+        let informesMaq = historialInformes.filter(inf => {
+            return (inf.maquina || "").trim().toUpperCase() === nombreBase;
+        });
         
+        let estadoFisico = "Óptimo";
+        if (informesMaq.length > 0) {
+            informesMaq.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+            estadoFisico = informesMaq[0].estado || "Óptimo";
+        }
+
+        // 2. Lógica de renderizado combinada
+        if (estado.fechaUltimoMaint && estado.fechaUltimoMaint !== "") {
+            // Forzamos el uso de formato local para evitar saltos de día por zona horaria
+            let fechaUltimo = new Date(estado.fechaUltimoMaint + "T00:00:00");
+            document.getElementById('fecha-ultimo-maint').value = fechaUltimo.toLocaleDateString('es-CL');
+            
             let hoy = new Date();
             let dias = Math.floor((hoy - fechaUltimo) / (1000 * 60 * 60 * 24));
             if (dias < 0) dias = 0;
 
-            if (estado.horas >= 40 || dias >= 90) {
-                statusAlerta.className = "alert-box alert-danger";
-                statusAlerta.innerHTML = `⚠️ Tiempo o uso excedido para mantenimiento.<br>Horas: ${estado.horas}/40 | Días: ${dias}/90`;
-            } else {
-                statusAlerta.className = "alert-box alert-success";
-                statusAlerta.innerHTML = `✅ Estado óptimo. Horas: ${estado.horas}/40 | Días: ${dias}/90`;
+            // Prioridad 1: Falla Crítica / Rechazado (Pisa a todos los demás)
+            if (estadoFisico.includes("Peligro") || estadoFisico.includes("Rechazado")) {
+                statusAlerta.className = "alert-box";
+                statusAlerta.style.cssText = "background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; display: block;";
+                statusAlerta.innerHTML = `🛑 EQUIPO RECHAZADO / PELIGRO.<br>La máquina tiene fallas críticas sin reparar.`;
+            } 
+            // Prioridad 2: Operativo pero con Pendientes Menores
+            else if (estadoFisico.includes("Pendientes")) {
+                statusAlerta.className = "alert-box";
+                statusAlerta.style.cssText = "background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; display: block;";
+                statusAlerta.innerHTML = `⚠️ Operativo con Pendientes.<br>Requiere repuestos/atención. (Horas: ${estado.horas || 0}/40 | Días: ${dias}/90)`;
+            } 
+            // Prioridad 3: Toca Mantenimiento Preventivo (Pasó las 40 hrs o 90 días)
+            else if ((estado.horas || 0) >= 40 || dias >= 90) {
+                statusAlerta.className = "alert-box";
+                statusAlerta.style.cssText = "background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; display: block;"; 
+                statusAlerta.innerHTML = `⏰ Toca Mantenimiento Preventivo.<br>Límite excedido. Horas: ${estado.horas || 0}/40 | Días: ${dias}/90`;
+            } 
+            // Prioridad 4: Todo Perfecto (Sin fallas y con horas al día)
+            else {
+                statusAlerta.className = "alert-box";
+                statusAlerta.style.cssText = "background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; display: block;";
+                statusAlerta.innerHTML = `✅ Estado óptimo. Horas: ${estado.horas || 0}/40 | Días: ${dias}/90`;
             }
         } else {
             document.getElementById('fecha-ultimo-maint').value = "Sin registro";
-            statusAlerta.className = "alert-box alert-secondary";
+            statusAlerta.className = "alert-box";
+            statusAlerta.style.cssText = "background-color: #e2e3e5; color: #383d41; border: 1px solid #d6d8db; display: block;";
             statusAlerta.innerHTML = "⚪ Estado inicial: Sin registro de mantenimiento.";
         }
     }
@@ -1376,7 +1416,6 @@
             return;
         }
 
-        const meta = baseDeDatos[maquinaActual].meta;
         const fechaInp = document.getElementById('ctrl-fecha');
         const tecnicoInp = document.getElementById('ctrl-tecnico');
         const supervisorInp = document.getElementById('ctrl-supervisor');
@@ -1384,9 +1423,68 @@
         const ubicacionInp = document.getElementById('ctrl-ubicacion');
         const horasInp = document.getElementById('ctrl-horas-edit');
 
-        const fechaBase = (fechaInp && fechaInp.value) ? new Date(fechaInp.value + "T00:00:00") : new Date();
-        const tecnico = (tecnicoInp && tecnicoInp.value.trim()) ? tecnicoInp.value.trim() : "No especificado";
-        const supervisor = (supervisorInp && supervisorInp.value.trim()) ? supervisorInp.value.trim() : "No especificado";
+        // ==================================================
+        // 1. VALIDACIÓN ESTRICTA (MURO DE SEGURIDAD)
+        // ==================================================
+        if (!fechaInp || !fechaInp.value) {
+            alert("⚠️ VALIDACIÓN: Debe ingresar la Fecha de revisión.");
+            if(fechaInp) fechaInp.focus();
+            return;
+        }
+
+        if (!tecnicoInp || !tecnicoInp.value.trim()) {
+            alert("⚠️ VALIDACIÓN: Debe ingresar el nombre del Técnico responsable.");
+            if(tecnicoInp) tecnicoInp.focus();
+            return;
+        }
+
+        // VALIDACIÓN: El nombre del supervisor ahora es OBLIGATORIO
+        if (!supervisorInp || !supervisorInp.value.trim()) {
+            alert("⚠️ VALIDACIÓN: Debe ingresar el nombre del Supervisor responsable.");
+            if(supervisorInp) supervisorInp.focus();
+            return;
+        }
+
+        let pautaIncompleta = false;
+        baseDeDatos[maquinaActual].pauta.forEach(tarea => {
+            const data = registros[tarea.id];
+            // Si marcó Regular o Malo, DEBE llenar las observaciones y acción correctiva
+            if (data && (data.estado === 'Regular' || data.estado === 'Malo')) {
+                if (!data.obs.trim() || !data.accion.trim()) {
+                    pautaIncompleta = true;
+                }
+            }
+        });
+
+        if (pautaIncompleta) {
+            alert("⚠️ VALIDACIÓN: Ha marcado puntos de la pauta como 'Regular' o 'Malo'. Es obligatorio llenar la 'Descripción' y la 'Acción Correctiva' para justificar esos hallazgos.");
+            return;
+        }
+
+        let firmaTec = (canvases.tecnico.el && !isCanvasEmpty(canvases.tecnico.el)) ? canvases.tecnico.el.toDataURL() : null;
+        let firmaSup = (canvases.supervisor.el && !isCanvasEmpty(canvases.supervisor.el)) ? canvases.supervisor.el.toDataURL() : null;
+
+        if (informeEditandoId) {
+            let infAntiguo = historialInformes.find(i => i.id === informeEditandoId);
+            if (infAntiguo) { 
+                if (!firmaTec && infAntiguo.firmaTecnico) firmaTec = infAntiguo.firmaTecnico; 
+                if (!firmaSup && infAntiguo.firmaSupervisor) firmaSup = infAntiguo.firmaSupervisor; 
+            }
+        }
+
+        // VALIDACIÓN: La firma del técnico debe ir desde el día 1
+        if (!firmaTec) {
+            alert("⚠️ VALIDACIÓN: La Firma del Técnico Responsable es obligatoria para poder guardar el informe.");
+            return;
+        }
+        // ==================================================
+        // FIN DE LA VALIDACIÓN.
+        // ==================================================
+
+        const meta = baseDeDatos[maquinaActual].meta;
+        const fechaBase = new Date(fechaInp.value + "T00:00:00");
+        const tecnico = tecnicoInp.value.trim();
+        const supervisor = supervisorInp.value.trim(); 
         const serie = (serieInp && serieInp.value.trim()) ? serieInp.value.trim() : (baseDeDatos[maquinaActual].meta.serie || "S/N");
         const ubicacion = (ubicacionInp && ubicacionInp.value.trim()) ? ubicacionInp.value.trim() : (estadoMaquinas[maquinaActual]?.ubicacion || "Taller Principal");
         const horasReporte = (horasInp && !isNaN(parseFloat(horasInp.value))) ? parseFloat(horasInp.value) : (estadoMaquinas[maquinaActual]?.horas || 0);
@@ -1432,22 +1530,11 @@
             });
         });
 
-        let firmaTec = (canvases.tecnico.el && !isCanvasEmpty(canvases.tecnico.el)) ? canvases.tecnico.el.toDataURL() : null;
-        let firmaSup = (canvases.supervisor.el && !isCanvasEmpty(canvases.supervisor.el)) ? canvases.supervisor.el.toDataURL() : null;
-        
-        if(informeEditandoId) {
-            let infAntiguo = historialInformes.find(i => i.id === informeEditandoId);
-            if(infAntiguo) {
-                if(!firmaTec && infAntiguo.firmaTecnico) firmaTec = infAntiguo.firmaTecnico;
-                if(!firmaSup && infAntiguo.firmaSupervisor) firmaSup = infAntiguo.firmaSupervisor;
-            }
-        }
-
         mostrarLoader("☁️ Guardando documentos y subiendo firmas a Firebase Storage...");
         
         try {
             const tempId = informeEditandoId ? informeEditandoId : Date.now();
-            let eraEdicion = informeEditandoId !== null; // Guardamos el estado de edición antes de limpiar
+            let eraEdicion = informeEditandoId !== null; 
             
             let urlFirmaTec = await subirImagenAStorage(firmaTec, `firmas/${tempId}_tecnico.png`);
             let urlFirmaSup = await subirImagenAStorage(firmaSup, `firmas/${tempId}_supervisor.png`);
@@ -1457,7 +1544,7 @@
                 fecha: fechaBase.toISOString(),
                 maquina: maquinaActual,
                 inspector: tecnico,
-                supervisor: supervisor,
+                supervisor: supervisor, // Ahora el nombre se guarda obligatoriamente
                 firmaTecnico: urlFirmaTec,
                 firmaSupervisor: urlFirmaSup,
                 serie: serie,
@@ -1486,7 +1573,6 @@
 
             ocultarLoader();
 
-            // --- LIMPIEZA PROFUNDA DE LA INTERFAZ ---
             informeEditandoId = null;
             const btnGen = document.getElementById('btn-generar');
             if(btnGen) btnGen.innerText = "Generar y Guardar Mantenimiento";
@@ -1513,13 +1599,10 @@
 
             alert("✅ Informe y Checklist finalizados y guardados exitosamente.");
             
-            // --- RUTEO INTELIGENTE ---
             if (eraEdicion) {
-                // Si solo estábamos editando/firmando, volvemos al Historial
                 cambiarPestana('historial');
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             } else {
-                // Si es un mantenimiento nuevo, mostramos el PDF
                 renderizarPDF(informeData);
             }
             
@@ -2325,10 +2408,9 @@
             });
         }
     }
-	
-	
 
     function quitarBloqueoFirmas() {
+        // 1. Desbloquear cabecera
         const inputs = ['ctrl-fecha', 'ctrl-tecnico', 'ctrl-supervisor', 'ctrl-serie', 'ctrl-ubicacion', 'ctrl-horas-edit'];
         inputs.forEach(id => {
             let el = document.getElementById(id);
@@ -2338,29 +2420,65 @@
             }
         });
 
-        // Restaura el lienzo del TÉCNICO y oculta la foto
+        // ==========================================
+        // NUEVO: LIMPIAR NOMBRES DE TÉCNICO Y SUPERVISOR
+        // ==========================================
+        let fTec = document.getElementById('ctrl-tecnico');
+        if (fTec) fTec.value = "";
+        
+        let fSup = document.getElementById('ctrl-supervisor');
+        if (fSup) fSup.value = "";
+        
+        // Refrescar los textos que aparecen arriba de las firmas
+        actualizarNombresFirmas(); 
+        // ==========================================
+
+        // 2. Desbloquear los botones y campos de la pauta de tareas
+        document.querySelectorAll('#lista-tareas input').forEach(input => {
+            input.disabled = false;
+            input.readOnly = false;
+            input.style.backgroundColor = '#fff';
+        });
+        document.querySelectorAll('#lista-tareas .btn-estado').forEach(btn => {
+            btn.disabled = false;
+            btn.style.pointerEvents = 'auto';
+        });
+        document.querySelectorAll('#lista-tareas .btn-group').forEach(group => {
+            group.style.pointerEvents = 'auto';
+            group.style.opacity = '1';
+        });
+
+        // 3. Restaura, DESBLOQUEA y LIMPIA el lienzo del TÉCNICO
         const canvasTec = document.getElementById('canvas-tecnico');
         if (canvasTec) {
             canvasTec.style.display = 'block';
             canvasTec.style.pointerEvents = 'auto';
             canvasTec.style.opacity = '1';
+            limpiarFirma('tecnico'); // Pasamos la goma de borrar
             let btnBorrarTec = canvasTec.parentElement.querySelector('button');
             if(btnBorrarTec) btnBorrarTec.style.display = 'inline-block';
         }
         let imgTec = document.getElementById('visor-firma-tec');
-        if(imgTec) imgTec.style.display = 'none';
+        if(imgTec) {
+            imgTec.style.display = 'none';
+            imgTec.src = ''; 
+        }
 
-        // Restaura el lienzo del SUPERVISOR y oculta la foto
+        // 4. Restaura, DESBLOQUEA y LIMPIA el lienzo del SUPERVISOR
         const canvasSup = document.getElementById('canvas-supervisor');
         if (canvasSup) {
             canvasSup.style.display = 'block';
             canvasSup.style.pointerEvents = 'auto';
             canvasSup.style.opacity = '1';
+            limpiarFirma('supervisor'); // Pasamos la goma de borrar
             let btnBorrarSup = canvasSup.parentElement.querySelector('button');
             if(btnBorrarSup) btnBorrarSup.style.display = 'inline-block';
         }
         let imgSup = document.getElementById('visor-firma-sup');
-        if(imgSup) imgSup.style.display = 'none';
+        if(imgSup) {
+            imgSup.style.display = 'none';
+            imgSup.src = ''; 
+        }
     }
 	
 	function migrarEstadosInformes() {
@@ -2478,7 +2596,7 @@
                 detallesTxt = "Equipo sin mantenimientos previos.";
             } else if (pendientes > 0) {
                 colorBorde = "#dc3545"; 
-                estadoTxt = "🛑 " + pendientes + " RPendientes";
+                estadoTxt = "⚠️ " + pendientes + " Repuesto Pendientes";
                 detallesTxt = "Requiere atención. (Uso: " + horasUso + " hrs)";
             } else if (horasUso >= 40 || diferenciaDias >= 90) {
                 colorBorde = "#ffc107"; 
@@ -2789,21 +2907,19 @@
 	
 	function rechazarPorSupervisor() {
         if(!informeEditandoId) return;
-    
-        let motivo = prompt("Indique el motivo del rechazo (Ej: La máquina sigue sucia, falta engrasar, etc.):");
+        let motivo = prompt("Indique el motivo del rechazo (Ej: La máquina sigue sucia, falta engrasar, etc.):"); 
         if(motivo === null) return; 
-    
+        
         let index = historialInformes.findIndex(i => i.id === informeEditandoId);
         if(index > -1) {
-            historialInformes[index].estado = "Rechazado por Supervisor";
-            historialInformes[index].motivoRechazo = motivo;
-            historialInformes[index].firmaTecnico = null; 
-        
-            db.ref('historialInformes').set(historialInformes);
-        
-            alert("❌ El mantenimiento ha sido rechazado y devuelto al técnico.");
+            historialInformes[index].estado = "Rechazado por Supervisor"; 
+            historialInformes[index].motivoRechazo = motivo; 
             
-            // RUTEO Y LIMPIEZA TOTAL: Usamos la rutina que ya creamos
+            historialInformes[index].firmaTecnico = null; // Se anula la del técnico
+            historialInformes[index].firmaSupervisor = null; // <-- NUEVA: Se anula la del supervisor también
+            
+            db.ref('historialInformes').set(historialInformes); 
+            alert("❌ El mantenimiento ha sido rechazado y devuelto al técnico."); 
             cancelarEdicion(); 
         }
     }
