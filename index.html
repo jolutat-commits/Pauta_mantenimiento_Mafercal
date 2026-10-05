@@ -680,18 +680,13 @@
     // --- INICIALIZACIÓN MÁGICA DE FIREBASE ---
     window.onload = function() {
         initCanvases();
-        
         let loadingMsg = document.createElement('div');
-        loadingMsg.id = 'firebase-loader';
-        loadingMsg.style = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.9); z-index:9999; display:flex; justify-content:center; align-items:center; font-size:1.5em; font-weight:bold; color:#0056b3;';
-        loadingMsg.innerHTML = '☁️ Conectando con la nube Mafercal...';
-        document.body.appendChild(loadingMsg);
+        // ... (código del loader visual) ...
 
         let inicializado = false;
 
         db.ref('/').on('value', (snapshot) => {
             const data = snapshot.val() || {};
-            
             baseDeDatos = data.baseDeDatos || JSON.parse(JSON.stringify(bdDeFabrica));
             estadoMaquinas = data.estadoMaquinas || {};
             
@@ -702,6 +697,37 @@
                 historialInformes = rawHistorial;
             }
             historialInformes.sort((a,b) => b.id - a.id); 
+
+            // ==========================================
+            // AUTO-REPARACIÓN DE FECHAS FANTASMAS BLINDADA
+            // ==========================================
+            let estadoCambiado = false;
+            for (let maq in estadoMaquinas) {
+                let nombreBase = maq.trim().toUpperCase();
+                
+                let informesDeEstaMaquina = historialInformes.filter(inf => {
+                    let nombreInf = (inf.maquina || "").trim().toUpperCase();
+                    return nombreInf === nombreBase;
+                });
+                
+                let fechaReal = "";
+                
+                if (informesDeEstaMaquina.length > 0) {
+                    informesDeEstaMaquina.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+                    fechaReal = informesDeEstaMaquina[0].fecha.split('T')[0];
+                }
+                
+                let fechaActual = estadoMaquinas[maq].fechaUltimoMaint || "";
+                if (fechaActual !== fechaReal) {
+                    estadoMaquinas[maq].fechaUltimoMaint = fechaReal;
+                    estadoCambiado = true;
+                }
+            }
+            if (estadoCambiado) {
+                db.ref('estadoMaquinas').set(estadoMaquinas);
+            }
+            // =========================================
+   
 
             if (!inicializado) {
                 inicializado = true;
@@ -716,13 +742,20 @@
                 document.getElementById('app-view').style.display = 'block';
                 inicializarSelectorMaquinas();
             } else {
+                // ... (resto del código de carga)
                 if(document.getElementById('btn-historial').classList.contains('active')) cargarHistorial();
                 if(document.getElementById('btn-creador').classList.contains('active')) listarEquiposEnCreador();
+                
+                // Actualiza la vista si estás parado en el Horómetro
+                if(document.getElementById('btn-horometro').classList.contains('active') && estadoMaquinas[maquinaActual]) {
+                    actualizarHorometro(estadoMaquinas[maquinaActual]);
+                }
             }
         }, (error) => {
             alert("Error de conexión con la nube. Asegúrate de tener las Reglas de Firebase en TRUE.");
             console.error(error);
         });
+       
     };
     function inicializarSelectorMaquinas(filtro = "") {
         const selector = document.getElementById('selector-maquina');
@@ -734,7 +767,8 @@
 
         for (const maq in baseDeDatos) {
             if (!estadoMaquinas[maq]) {
-                estadoMaquinas[maq] = { horas: 0, fechaUltimoMaint: new Date().toISOString().split('T')[0], serie: baseDeDatos[maq].meta.serie || "", ubicacion: "" };
+                // AQUÍ EL CAMBIO: La fecha nace como texto vacío ""
+                estadoMaquinas[maq] = { horas: 0, fechaUltimoMaint: "", serie: baseDeDatos[maq].meta.serie || "", ubicacion: "" };
                 db.ref('estadoMaquinas/' + maq).set(estadoMaquinas[maq]);
             }
 
@@ -762,11 +796,10 @@
             selector.selectedIndex = 0;
         }
 
-        // MAGIA: Si estás buscando, expande la lista para que veas todas las opciones a la vez
         if (filtro !== "") {
             selector.size = cantidadOpciones > 6 ? 6 : (cantidadOpciones < 2 ? 2 : cantidadOpciones);
         } else {
-            selector.size = 1; // Vuelve a su tamaño normal de 1 línea
+            selector.size = 1; 
         }
 
         cargarDatosMaquina();
@@ -1929,17 +1962,20 @@
 
     function eliminarReporte(id) {
         if(confirm("¿Deseas enviar este informe a la papelera por 30 días?")) {
-            let informe = historialInformes.find(i => i.id === id);
+            let informe = historialInformes.find(i => String(i.id) === String(id)); // Blindaje de ID
             if(informe) {
+                let maquinaAfectada = informe.maquina; // Guardamos el nombre antes de borrar
                 informe.fechaBorrado = Date.now();
                 
                 // 1. Guardar en papelera
                 db.ref('papelera/informes/' + id).set(informe);
                 
-                // 2. Eliminar original del historial
-                historialInformes = historialInformes.filter(i => i.id !== id);
-                db.ref('historialInformes').set(historialInformes); 
-                cargarHistorial();
+                // 2. Eliminar original del historial y recalcular
+                historialInformes = historialInformes.filter(i => String(i.id) !== String(id));
+                db.ref('historialInformes').set(historialInformes).then(() => {
+                    cargarHistorial();
+                    recalcularUltimoMantenimiento(maquinaAfectada); // AQUÍ ESTÁ LA MAGIA QUE AVISA AL HORÓMETRO
+                }); 
             }
         }
     }
@@ -2282,8 +2318,19 @@
     function limpiarHistorial() {
         if(confirm("¿Estás seguro que deseas borrar todos los informes de la NUBE? Esto no se puede deshacer.")) {
             historialInformes = [];
-            db.ref('historialInformes').set(historialInformes);
-            cargarHistorial();
+            db.ref('historialInformes').set(historialInformes).then(() => {
+                // Como borramos todo, blanqueamos las fechas de todas las máquinas
+                for(let maq in estadoMaquinas) {
+                    estadoMaquinas[maq].fechaUltimoMaint = null;
+                }
+                db.ref('estadoMaquinas').set(estadoMaquinas);
+                
+                if(maquinaActual && estadoMaquinas[maquinaActual]) {
+                    actualizarHorometro(estadoMaquinas[maquinaActual]);
+                }
+                
+                cargarHistorial();
+            });
         }
     }
 	
@@ -2439,7 +2486,7 @@
                 detallesTxt = "Equipo sin mantenimientos previos.";
             } else if (pendientes > 0) {
                 colorBorde = "#dc3545"; 
-                estadoTxt = "🛑 " + pendientes + "  Pendientes";
+                estadoTxt = "🛑 " + pendientes + " Reparaciones Pendientes";
                 detallesTxt = "Requiere atención. (Uso: " + horasUso + " hrs)";
             } else if (horasUso >= 40 || diferenciaDias >= 90) {
                 colorBorde = "#ffc107"; 
@@ -2843,6 +2890,36 @@
         if(panelGeneral) panelGeneral.removeAttribute('open');
     
         window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+	
+	function recalcularUltimoMantenimiento(nombreMaquina) {
+        if (!estadoMaquinas[nombreMaquina]) return;
+
+        // Limpiamos el nombre base para compararlo de forma segura
+        let nombreBase = nombreMaquina.trim().toUpperCase();
+
+        // Buscamos si a la máquina le quedan informes vivos en el historial ignorando mayúsculas/espacios
+        let informesMaq = historialInformes.filter(inf => {
+            let nombreInf = (inf.maquina || "").trim().toUpperCase();
+            return nombreInf === nombreBase;
+        });
+
+        if (informesMaq.length > 0) {
+            // Ordenamos los informes para encontrar la fecha más reciente
+            informesMaq.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+            estadoMaquinas[nombreMaquina].fechaUltimoMaint = informesMaq[0].fecha.split('T')[0];
+        } else {
+            // Si ya no quedan informes, dejamos la fecha en blanco ("Sin registro")
+            estadoMaquinas[nombreMaquina].fechaUltimoMaint = ""; 
+        }
+        
+        // Guardamos la corrección en la nube
+        db.ref('estadoMaquinas/' + nombreMaquina).set(estadoMaquinas[nombreMaquina]);
+        
+        // Refrescamos la pantalla si estamos viendo el horómetro de esa máquina
+        if (maquinaActual === nombreMaquina) {
+            actualizarHorometro(estadoMaquinas[nombreMaquina]);
+        }
     }
 
 </script>
