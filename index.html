@@ -757,6 +757,7 @@
         });
        
     };
+	
     function inicializarSelectorMaquinas(filtro = "") {
         const selector = document.getElementById('selector-maquina');
         const valorActual = selector.value; 
@@ -810,6 +811,7 @@
         const filtro = document.getElementById('buscador-select-maquina').value;
         inicializarSelectorMaquinas(filtro);
     }
+	
     function initCanvases() {
         canvases.tecnico.el = document.getElementById('canvas-tecnico');
         canvases.supervisor.el = document.getElementById('canvas-supervisor');
@@ -819,6 +821,7 @@
         setupCanvas('tecnico');
         setupCanvas('supervisor');
     }
+	
     function setupCanvas(key) {
         const cvs = canvases[key];
         cvs.ctx.lineWidth = 2;
@@ -840,6 +843,7 @@
         cvs.el.addEventListener('mousedown', start); cvs.el.addEventListener('mousemove', draw); cvs.el.addEventListener('mouseup', stop); cvs.el.addEventListener('mouseout', stop);
         cvs.el.addEventListener('touchstart', start, {passive: false}); cvs.el.addEventListener('touchmove', draw, {passive: false}); cvs.el.addEventListener('touchend', stop);
     }
+	
     function limpiarFirma(key) { canvases[key].ctx.clearRect(0, 0, canvases[key].el.width, canvases[key].el.height); }
     function isCanvasEmpty(canvas) { const blank = document.createElement('canvas'); blank.width = canvas.width; blank.height = canvas.height; return canvas.toDataURL() === blank.toDataURL(); }
 
@@ -871,6 +875,7 @@
             }
         }
     }
+	
     function actualizarNombresFirmas() {
         let tec = document.getElementById('ctrl-tecnico').value;
         let sup = document.getElementById('ctrl-supervisor').value;
@@ -1062,7 +1067,6 @@
         }
     }
 
-
     function sumarHoras() {
         const add = parseFloat(document.getElementById('input-sumar-horas').value);
         if(isNaN(add) || add <= 0) return alert("Ingrese un número válido mayor a 0.");
@@ -1170,7 +1174,6 @@
         window.scrollTo(0, 0);
     }
 	
-
     function cancelarEdicionCreador() {
         equipoEnEdicion = null;
         document.getElementById('nuevo-eq-id').value = "";
@@ -1274,8 +1277,6 @@
         }
     }
 
-    
-	
 	function listarEquiposEnCreador() {
         var contenedor = document.getElementById("lista-equipos-sistema");
         contenedor.innerHTML = "";
@@ -2034,7 +2035,6 @@
         }
     }
 
-
     function eliminarReporte(id) {
         if(confirm("¿Deseas enviar este informe a la papelera por 30 días?")) {
             let informe = historialInformes.find(i => String(i.id) === String(id)); // Blindaje de ID
@@ -2314,7 +2314,6 @@
             alert("Error de subida. Asegúrate de tener buena conexión: " + error.message);
         }
     }
-
 
     function descargarPDFDesdeModal() {
         if(!informeParaRepuestosId) return; 
@@ -2623,7 +2622,6 @@
         if (inputBuscador) inputBuscador.value = "";
     }
 
-	
 	function mostrarHistorialFiltrado(informes) {
         const contenedor = document.getElementById('lista-historial');
         contenedor.innerHTML = "";
@@ -2707,8 +2705,6 @@
         });
     }
 
-	
-	
 	let informeParaPlazoId = null;
 
     function abrirModalPlazo(id) {
@@ -2771,7 +2767,6 @@
         });
     }
 
-	
 	// NUEVA FUNCIÓN PARA EL BUSCADOR
     function filtrarEstadoGeneral() {
         var input = document.getElementById('buscador-estado-general');
@@ -2975,7 +2970,6 @@
     function cerrarDetalleMaquina() {
         document.getElementById('modal-detalle-maquina').style.display = 'none';
     }
-
 	
 	// ESTA ES LA FUNCIÓN NUEVA QUE TE FALTABA
     function irAHistorialDesdeDetalle() {
